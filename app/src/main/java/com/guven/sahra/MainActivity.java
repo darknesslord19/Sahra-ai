@@ -238,7 +238,7 @@ public class MainActivity extends Activity {
         satir.addView(g, l);
         ekle(kart, satir, 10, -2);
 
-        anahtar("Sürekli dinleme", "Cümleye \"Sahra\" diye başlayın. Pili daha çok harcar, bazı telefonlarda bip sesi çıkar. Ses, telefonun tanıma hizmetine gider.",
+        anahtar("Sürekli dinleme", "Yalnızca \"Sahra\" ile başlayan cümleye tepki verir. Sadece \"Sahra\" derseniz komutunuzu bekler. Adınızı ayırt etmek için mikrofon açık kalır ve duyulan ses telefonun tanıma hizmetine gidebilir. Pili daha çok harcar, bazı telefonlarda bip sesi çıkar.",
                 "surekli");
     }
 

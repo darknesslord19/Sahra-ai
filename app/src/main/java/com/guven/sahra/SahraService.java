@@ -45,7 +45,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.regex.Pattern;
 
 /** Yüzen robot, ses tanıma ve konuşma. Çalışırken bildirimi görünür. */
 public class SahraService extends Service {
@@ -66,7 +65,8 @@ public class SahraService extends Service {
     private int deneme;
     private String sonSoz = "";
     private boolean yerelSes;
-    private boolean sesBasladi;
+    private boolean uyandi;
+    private boolean komutBekle;
     private String duyulan = "";
     private final List<String> sayfalar = new ArrayList<String>();
     private int sayfa;
@@ -279,7 +279,7 @@ public class SahraService extends Service {
     }
 
     private void durum() {
-        String d = dinliyor && (elleDinleme || sesBasladi) || konusuyor ? "active" : "idle";
+        String d = dinliyor && (elleDinleme || uyandi) || konusuyor ? "active" : "idle";
         web.evaluateJavascript("window.robot&&robot(" + JSONObject.quote(d) + "," + JSONObject.quote(Ayar.renk(this)) + "," + JSONObject.quote(Ayar.davranis(this)) + ")", null);
     }
 
@@ -383,7 +383,7 @@ public class SahraService extends Service {
         }
         dinliyor = false;
         elleDinleme = false;
-        sesBasladi = false;
+        uyandi = false;
         durum();
     }
 
@@ -480,14 +480,24 @@ public class SahraService extends Service {
             boolean elle = elleDinleme;
             dinliyor = false;
             elleDinleme = false;
-            sesBasladi = false;
+            uyandi = false;
             deneme = 0;
             Ayar.al(SahraService.this).edit().putString("tanima", ad(secilen)).apply();
             durum();
             if (l != null && !l.isEmpty()) {
-                String s = l.get(0);
-                // Sürekli dinlemede yalnızca "Sahra" ile başlayan cümleler uygulanır
-                if (elle || Pattern.compile("^(hey |tamam )?sahra\\b").matcher(Komut.sade(s)).find()) calistir(s);
+                if (elle) {
+                    calistir(l.get(0));
+                } else {
+                    // "Sahra" ile başlamayan her şey iz bırakmadan atılır
+                    String komut = Uyandirma.komut(l);
+                    if (komut != null && komut.isEmpty()) {
+                        komutBekle = true;
+                        duyulan = "";
+                        soyle("Efendim " + Ayar.hitap(SahraService.this) + "?");
+                    } else if (komut != null) {
+                        calistir(komut);
+                    }
+                }
             }
             if (surekli()) ana.postDelayed(yenidenDinle, 900);
         }
@@ -497,7 +507,7 @@ public class SahraService extends Service {
             final boolean elle = elleDinleme;
             dinliyor = false;
             elleDinleme = false;
-            sesBasladi = false;
+            uyandi = false;
             durum();
             boolean sessizlik = hata == SpeechRecognizer.ERROR_NO_MATCH || hata == SpeechRecognizer.ERROR_SPEECH_TIMEOUT;
             // Bağlantı hatalarında (5, 8, 10, 11, 12, 13) sıradaki hizmetle yeniden dene
@@ -520,22 +530,23 @@ public class SahraService extends Service {
         }
 
         @Override public void onReadyForSpeech(Bundle b) { }
-        @Override
-        public void onBeginningOfSpeech() {
-            sesBasladi = true;
-            durum();
-        }
-
+        @Override public void onBeginningOfSpeech() { }
         @Override public void onRmsChanged(float v) { }
         @Override public void onBufferReceived(byte[] b) { }
         @Override public void onEndOfSpeech() { }
-        /** Duyulanı söylerken balonda gösterir. */
+        /** Elle dinlemede duyulan hemen görünür; sürekli dinlemede ancak "Sahra" duyulunca. */
         @Override
         public void onPartialResults(Bundle b) {
             ArrayList<String> l = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
             if (l == null || l.isEmpty() || l.get(0).isEmpty()) return;
-            String s = l.get(0);
-            if (elleDinleme || Pattern.compile("^(hey |tamam )?sahra\\b").matcher(Komut.sade(s)).find()) goster("🎤 " + s);
+            if (!elleDinleme) {
+                if (Uyandirma.komut(l.get(0)) == null) return;
+                if (!uyandi) {
+                    uyandi = true;
+                    durum();
+                }
+            }
+            goster("🎤 " + l.get(0));
         }
 
         @Override public void onEvent(int t, Bundle b) { }
@@ -706,6 +717,12 @@ public class SahraService extends Service {
                 }
                 konusuyor = false;
                 durum();
+                if (komutBekle) {
+                    // Yalnızca adı söylendi: sıradaki cümle "Sahra" demeden komut sayılır
+                    komutBekle = false;
+                    dinle(true);
+                    return;
+                }
                 if (surekli()) ana.postDelayed(yenidenDinle, 600);
             }
         });
@@ -758,6 +775,7 @@ public class SahraService extends Service {
     private final List<String> okumaKuyrugu = new ArrayList<String>();
 
     private void sustur() {
+        komutBekle = false;
         okumaKuyrugu.clear();
         sonSoz = "";
         bekleyenSoz = null;

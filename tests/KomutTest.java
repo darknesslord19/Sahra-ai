@@ -79,6 +79,20 @@ public class KomutTest {
         t("dur", "OKUMA_DUR", "");
         t("durdur", "MUZIK_DURDUR", "");
         t("mesaj yaz bunu oku", "YAZ", "bunu oku");
+        String[][] uyanma = {{"Sahra", ""}, {"hey Sahra", ""}, {"Sahara.", ""},
+                {"Sahra, WhatsApp aç", "WhatsApp aç"}, {"sahra Atatürk kim", "Atatürk kim"}};
+        for (String[] u : uyanma) {
+            if (!u[1].equals(com.guven.sahra.Uyandirma.komut(u[0]))) {
+                hata++;
+                System.out.println("HATA uyanma: " + u[0]);
+            }
+        }
+        for (String yabanci : new String[]{"WhatsApp aç", "dün sahra geldi", "sahralar çok sıcak", "Zehra bak", "gönder", ""}) {
+            if (com.guven.sahra.Uyandirma.komut(yabanci) != null) {
+                hata++;
+                System.out.println("HATA uyanmamalıydı: " + yabanci);
+            }
+        }
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }
