@@ -11,7 +11,7 @@ public final class Komut {
         MUZIK_CAL, MUZIK_ARA, MUZIK_DURDUR, SONRAKI, ONCEKI,
         YOUTUBE, WEB_ARA, UYGULAMA_AC, YAZ, GONDER, EKRAN_OKU, TIKLA,
         GERI, ANA_EKRAN, SON_UYGULAMALAR, BILDIRIMLER, ASAGI, YUKARI,
-        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, KAPAN, BILINMIYOR
+        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, OKUMA_DUR, KAPAN, BILINMIYOR
     }
 
     public final Tur tur;
@@ -82,6 +82,7 @@ public final class Komut {
         if (s.matches(".*sesi (artir|yukselt|biraz ac)$")) return k(Tur.SES_ARTIR);
         if (s.matches(".*sesi (azalt|kis|dusur)$")) return k(Tur.SES_AZALT);
 
+        if (s.matches("okumayi (durdur|kes|birak)|okuma|dur|yeter")) return k(Tur.OKUMA_DUR);
         if (s.matches("(pencereyi|bilgiyi|popup ?i?) kapat|kapat")) return k(Tur.PENCERE_KAPAT);
         for (String[] d : Davranis.LISTE) {
             String ad = sade(d[1]);
@@ -109,7 +110,7 @@ public final class Komut {
         if (m.find()) return parca(Tur.MUZIK_ARA, ham, m);
 
         if (s.matches("(mesaji )?gonder|yolla")) return k(Tur.GONDER);
-        if (s.matches("(ekrani|ekranda ne var|ekrandakini|ekrandakileri)( oku)?")) return k(Tur.EKRAN_OKU);
+        if (s.matches("ekranda ne var|(.* )?(oku|okur musun|okuyabilir misin|okusana)( bana| lutfen)?")) return k(Tur.EKRAN_OKU);
         if (s.matches("geri( git| don| gel)?")) return k(Tur.GERI);
         if (s.matches("ana (ekran|sayfa)(a|ya)?( git| don)?")) return k(Tur.ANA_EKRAN);
         if (s.matches("son uygulamalar(i)?( ac| goster)?")) return k(Tur.SON_UYGULAMALAR);

@@ -13,6 +13,7 @@ import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.ValueCallback;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -21,6 +22,9 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import org.json.JSONException;
+import org.json.JSONTokener;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,9 +41,27 @@ final class BilgiPenceresi {
     private FrameLayout govde;
     private WebView web;
     private String soru = "";
+    private String okunacak = "";
+    private boolean yukleniyor;
+    private final Runnable okuIstegi;
+
+    interface Metin {
+        void hazir(String metin);
+    }
+
+    /** Google sayfasından menü ve bağlantı satırlarını atıp cümle gibi olan satırları alır. */
+    private static final String SAYFA_METNI = "(function(){"
+            + "var k=document.querySelector('#rso')||document.querySelector('#main')||document.body;"
+            + "if(!k)return '';"
+            + "function sec(m,az){var g={},c=[],n=0;m.split('\\n').forEach(function(x){x=x.trim();"
+            + "if(x.length<az||g[x]||/https?:|www\\.|\u203a/.test(x)||n>2200)return;g[x]=1;c.push(x);n+=x.length});return c.join('\\n')}"
+            + "var t=sec(k.innerText||'',40);"
+            + "if(t.length<80)t=sec(document.body.innerText||'',20);"
+            + "return t})()";
     private int sira;
 
-    BilgiPenceresi(Context c, WindowManager pencereler, Runnable kapaninca) {
+    BilgiPenceresi(Context c, WindowManager pencereler, Runnable kapaninca, Runnable okuIstegi) {
+        this.okuIstegi = okuIstegi;
         this.c = c;
         this.pencereler = pencereler;
         this.kapaninca = kapaninca;
@@ -55,6 +77,8 @@ final class BilgiPenceresi {
         ac();
         baslik.setText(yeniSoru);
         yaz("Araştırıyorum…");
+        okunacak = "";
+        yukleniyor = true;
         return ++sira;
     }
 
@@ -62,7 +86,30 @@ final class BilgiPenceresi {
         return acik() && numara == sira;
     }
 
+    /** Penceredeki yazıyı verir. Henüz hazır değilse ya da yazı yoksa boş metin. */
+    void metniAl(final Metin alici) {
+        if (web == null) {
+            alici.hazir(yukleniyor ? "" : okunacak);
+            return;
+        }
+        web.evaluateJavascript(SAYFA_METNI, new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String deger) {
+                String t = "";
+                try {
+                    Object o = new JSONTokener(deger).nextValue();
+                    if (o instanceof String) t = (String) o;
+                } catch (JSONException e) {
+                    // Sayfa okunamadı; boş döner
+                }
+                alici.hazir(t.trim());
+            }
+        });
+    }
+
     void goster(Bilgi.Sonuc s) {
+        okunacak = s.baslik + ". " + s.metin;
+        yukleniyor = false;
         baslik.setText(s.baslik);
         temizle();
         LinearLayout l = new LinearLayout(c);
@@ -149,12 +196,15 @@ final class BilgiPenceresi {
         kok.addView(govde, gl);
 
         LinearLayout dugmeler = new LinearLayout(c);
-        dugmeler.addView(dugme("Google'da göster", false, new Runnable() {
+        dugmeler.addView(dugme("Google", false, new Runnable() {
             @Override
             public void run() {
                 google(soru);
             }
         }), new LinearLayout.LayoutParams(0, dp(44), 1f));
+        LinearLayout.LayoutParams ol = new LinearLayout.LayoutParams(0, dp(44), 1f);
+        ol.leftMargin = dp(8);
+        dugmeler.addView(dugme("🔊 Oku", false, okuIstegi), ol);
         LinearLayout.LayoutParams kl = new LinearLayout.LayoutParams(0, dp(44), 1f);
         kl.leftMargin = dp(8);
         dugmeler.addView(dugme("Kapat", true, new Runnable() {

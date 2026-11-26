@@ -402,7 +402,7 @@ public class MainActivity extends Activity {
                 {"Müzik ve ses", "müzik aç · sonraki şarkı · müziği durdur · sessize al · sesi aç · sesi kıs"},
                 {"Mesaj", "mesaj yaz akşam geliyorum · gönder"},
                 {"Ekran", "ekranı oku · Tamam butonuna tıkla · geri · ana ekran · aşağı kaydır"},
-                {"Sorular", "Atatürk kim · yapay zekâ nedir · Ankara hakkında bilgi · maç ne zaman · pencereyi kapat"},
+                {"Sorular", "Atatürk kim · yapay zekâ nedir · Ankara hakkında bilgi · maç ne zaman · oku · okumayı durdur · pencereyi kapat"},
                 {"Robot", "büyü · küçül · rengini mavi yap · sesini değiştir · kalp göz yap · rastgele davran"}};
         for (String[] g : gruplar) {
             ekle(kart, metin(g[0], 13, VURGU), 12, -2);

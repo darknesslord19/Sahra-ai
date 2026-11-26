@@ -70,6 +70,15 @@ public class KomutTest {
         t("saat kaç", "SAAT", "");
         t("mesaj yaz neredesin", "YAZ", "neredesin");
         if (com.guven.sahra.Davranis.LISTE.length != 22) hata++;
+        t("oku", "EKRAN_OKU", "");
+        t("Sahra oku", "EKRAN_OKU", "");
+        t("bunu bana oku", "EKRAN_OKU", "");
+        t("cevabı sesli oku", "EKRAN_OKU", "");
+        t("Google'daki sonuçları okur musun", "EKRAN_OKU", "");
+        t("okumayı durdur", "OKUMA_DUR", "");
+        t("dur", "OKUMA_DUR", "");
+        t("durdur", "MUZIK_DURDUR", "");
+        t("mesaj yaz bunu oku", "YAZ", "bunu oku");
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

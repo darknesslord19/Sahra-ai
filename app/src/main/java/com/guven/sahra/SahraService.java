@@ -234,10 +234,14 @@ public class SahraService extends Service {
         pencere = new BilgiPenceresi(this, pencereler, new Runnable() {
             @Override
             public void run() {
-                if (konusma != null) konusma.stop();
-                konusuyor = false;
-                durum();
+                sustur();
                 if (surekli()) ana.postDelayed(yenidenDinle, 600);
+            }
+        }, new Runnable() {
+            @Override
+            public void run() {
+                if (dinliyor) dinlemeyiBirak();
+                pencereyiOku();
             }
         });
     }
@@ -356,8 +360,7 @@ public class SahraService extends Service {
                     } else if (e.getEventTime() - an > 600) {
                         startActivity(new Intent(SahraService.this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                     } else {
-                        if (konusma != null) konusma.stop();
-                        konusuyor = false;
+                        sustur();
                         deneme = 0;
                         dinle(true);
                     }
@@ -609,6 +612,21 @@ public class SahraService extends Service {
             case PENCERE_KAPAT:
                 pencere.kapat();
                 break;
+            case OKUMA_DUR:
+                sustur();
+                goster("Okumayı durdurdum.");
+                if (surekli()) ana.postDelayed(yenidenDinle, 600);
+                return;
+            case EKRAN_OKU:
+                // Pencere açıksa arkadaki uygulama değil, penceredeki yazı okunur
+                if (pencere.acik()) {
+                    duyulan = "";
+                    yazi.setVisibility(View.GONE);
+                    pencereyiOku();
+                    return;
+                }
+                cevap = new Yurutucu(this).uygula(k);
+                break;
             case SORU:
                 sor(k.metin);
                 return;
@@ -680,6 +698,12 @@ public class SahraService extends Service {
             @Override
             public void run() {
                 if (konusma != null && konusma.isSpeaking()) return;
+                if (konusuyor && !okumaKuyrugu.isEmpty()) {
+                    yerelSes = false;
+                    sonSoz = okumaKuyrugu.remove(0);
+                    seslendir(sonSoz);
+                    return;
+                }
                 konusuyor = false;
                 durum();
                 if (surekli()) ana.postDelayed(yenidenDinle, 600);
@@ -731,7 +755,37 @@ public class SahraService extends Service {
         }.start();
     }
 
+    private final List<String> okumaKuyrugu = new ArrayList<String>();
+
+    private void sustur() {
+        okumaKuyrugu.clear();
+        sonSoz = "";
+        bekleyenSoz = null;
+        if (konusma != null) konusma.stop();
+        konusuyor = false;
+        durum();
+    }
+
+    /** Penceredeki cevabı ya da Google sonuçlarını sesli okur. */
+    private void pencereyiOku() {
+        pencere.metniAl(new BilgiPenceresi.Metin() {
+            @Override
+            public void hazir(String metin) {
+                if (!calisiyor || !pencere.acik()) return;
+                if (metin.isEmpty()) {
+                    konus(Ayar.hitap(SahraService.this) + ", okunacak yazı henüz hazır değil. Biraz sonra tekrar deneyin.");
+                    return;
+                }
+                // Uzun yazı parça parça okunur
+                List<String> parcalar = Sayfa.bol(metin, 350);
+                konus(parcalar.get(0));
+                okumaKuyrugu.addAll(parcalar.subList(1, parcalar.size()));
+            }
+        });
+    }
+
     private void konus(String metin) {
+        okumaKuyrugu.clear();
         if (!konusmaHazir) {
             bekleyenSoz = metin;
             return;
