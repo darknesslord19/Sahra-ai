@@ -44,6 +44,7 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
@@ -55,6 +56,9 @@ public class SahraService extends Service {
     static final String SES_DENE = "ses_dene";
     static final String EFEKT_DENE = "efekt_dene";
     static final String SES_SIRADAKI = "ses_siradaki";
+    static final String NET_SES_DENE = "net_ses_dene";
+    static final String DINLE = "dinle";
+    static final String SOR_VE_YAP = "sor_ve_yap";
     static boolean calisiyor;
 
     private final Handler ana = new Handler(Looper.getMainLooper());
@@ -204,7 +208,12 @@ public class SahraService extends Service {
     private final Runnable yenidenDinle = new Runnable() {
         @Override
         public void run() {
-            if (surekli() && !dinliyor && !konusuyor) dinle(false);
+            if (!surekli() || dinliyor || konusuyor) return;
+            if (!motorKipi()) {
+                dinle(false);
+            } else if (!motorHatasi) {
+                motor.basla();
+            }
         }
     };
     private final Runnable yaziGizle = new Runnable() {
@@ -244,6 +253,38 @@ public class SahraService extends Service {
             bildirim();
             robotKur();
             konusmaKur();
+            netSes = new CevrimiciSes(this);
+            motor = new UyandirmaMotoru(this, new UyandirmaMotoru.Olay() {
+                @Override
+                public void duyuldu() {
+                    komutBekle = true;
+                    duyulan = "";
+                    soyle("Efendim " + Ayar.hitap(SahraService.this) + "?");
+                }
+
+                @Override
+                public void hata(String neden) {
+                    // Eski sürekli dinlemeye dönülür; ayar değişince yeniden denenir
+                    motorHatasi = true;
+                    goster(neden);
+                    ana.postDelayed(yenidenDinle, 3000);
+                }
+            });
+            BildirimService.dinleyen = new BildirimService.Yeni() {
+                @Override
+                public void geldi(final BildirimService.Kayit k) {
+                    ana.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (calisiyor && ayar("araba", false) && ayar("aoku", false) && bosta()
+                                    && bekleyenGirdi == null) {
+                                duyulan = "";
+                                uzunSoyle(k.oku());
+                            }
+                        }
+                    });
+                }
+            };
             soyle("Merhaba " + Ayar.hitap(this) + ", emirlerinizi yerine getiriyorum.");
             veriYenile();
             ana.postDelayed(panoTuru, 8000);
@@ -253,17 +294,26 @@ public class SahraService extends Service {
             calistir(intent.getStringExtra(KOMUT));
         }
         if (SES_SIRADAKI.equals(eylem)) sesDegistir();
+        if (DINLE.equals(eylem)) {
+            sustur();
+            deneme = 0;
+            dinle(true);
+        }
+        if (intent != null && intent.hasExtra(SOR_VE_YAP)) hedefSor(intent.getStringExtra(SOR_VE_YAP));
+        if (NET_SES_DENE.equals(eylem)) {
+            netEngel = 0;
+            duyulan = "";
+            acikSoyle("Merhaba " + Ayar.hitap(this) + ", bu çevrimiçi sesim. Nasıl buldunuz?", true);
+        }
         if (intent != null && intent.hasExtra(EFEKT_DENE)) efektOynat(intent.getStringExtra(EFEKT_DENE));
         if (SES_DENE.equals(eylem)) soyle("Merhaba " + Ayar.hitap(this) + ", sesim şimdi böyle. Nasıl buldunuz?");
         if (YENILE.equals(eylem)) {
             boyutla(Ayar.boyut(this));
             veriYenile();
             if (!Pano.acik(this, "efektAcik")) efektKaldir();
-            if (surekli()) {
-                ana.postDelayed(yenidenDinle, 500);
-            } else if (!elleDinleme) {
-                dinlemeyiBirak();
-            }
+            motorHatasi = false;
+            if (!elleDinleme) dinlemeyiBirak();
+            if (surekli()) ana.postDelayed(yenidenDinle, 500);
         }
         return START_NOT_STICKY;
     }
@@ -272,6 +322,10 @@ public class SahraService extends Service {
     public void onDestroy() {
         calisiyor = false;
         ana.removeCallbacksAndMessages(null);
+        BildirimService.dinleyen = null;
+        Hafiza.temizle();
+        if (motor != null) motor.kapat();
+        if (netSes != null) netSes.durdur();
         if (tanima != null) tanima.destroy();
         if (konusma != null) konusma.shutdown();
         if (pencere != null) pencere.kapat();
@@ -286,6 +340,15 @@ public class SahraService extends Service {
 
     private boolean surekli() {
         return Ayar.al(this).getBoolean("surekli", false);
+    }
+
+    private boolean ayar(String ad, boolean ilk) {
+        return Ayar.al(this).getBoolean(ad, ilk);
+    }
+
+    /** "Sahra" adı telefonda mı beklenecek? */
+    private boolean motorKipi() {
+        return ayar("uyan", false) && !motorHatasi && ModelIndir.hazir(this);
     }
 
     private void bildirim() {
@@ -497,6 +560,7 @@ public class SahraService extends Service {
 
     private void dinlemeyiBirak() {
         ana.removeCallbacks(yenidenDinle);
+        if (motor != null) motor.durdur();
         if (baslatici != null) ana.removeCallbacks(baslatici);
         if (tanima != null) {
             tanima.destroy();
@@ -549,7 +613,7 @@ public class SahraService extends Service {
         dinliyor = true;
         elleDinleme = elle;
         duyulan = "";
-        if (elle) goster("🎤 Dinliyorum " + Ayar.hitap(this) + "…");
+        if (elle) goster("Dinliyorum " + Ayar.hitap(this) + "…");
         durum();
         // Eski bağlantı kapanmadan yenisi açılırsa hizmet kopabiliyor; kısa süre beklenir
         baslatici = new Runnable() {
@@ -667,7 +731,7 @@ public class SahraService extends Service {
                     durum();
                 }
             }
-            goster("🎤 " + l.get(0));
+            goster("“" + l.get(0) + "”");
         }
 
         @Override public void onEvent(int t, Bundle b) { }
@@ -681,7 +745,15 @@ public class SahraService extends Service {
         // Yeni komut gelince önceki özel komutun kalan adımları iptal edilir
         for (Runnable r : sirada) ana.removeCallbacks(r);
         sirada.clear();
+        komutSirasi++;
         duyulan = cumle;
+        // Sahra bir soru sorduysa gelen cümle önce onun cevabı sayılır
+        Girdi girdi = bekleyenGirdi;
+        bekleyenGirdi = null;
+        if (girdi != null && System.currentTimeMillis() - bekleyenZaman < 45000) {
+            String yalin = Uyandirma.komut(cumle);
+            if (girdi.al(yalin == null || yalin.isEmpty() ? cumle : yalin)) return;
+        }
         Ozel ozel = Ozel.bul(Yedek.komutlar(this), cumle);
         if (ozel != null) {
             ozelCalistir(ozel);
@@ -711,7 +783,8 @@ public class SahraService extends Service {
             public void run() {
                 String soz = ozel.cevap.isEmpty() ? TextUtils.join("\n", cevaplar) : ozel.cevap;
                 // Soru adımı kendi cevabını söyler; üstüne konuşulmaz
-                if (soz.isEmpty() && pencere.acik()) return;
+                // Kendi cevabını söyleyen adım (alarm, hava gibi) da kesilmez
+                if (soz.isEmpty() && (pencere.acik() || konusuyor)) return;
                 soyle(soz.isEmpty() ? "Tamam " + Ayar.hitap(SahraService.this) + "." : soz);
             }
         };
@@ -774,6 +847,66 @@ public class SahraService extends Service {
             case YAPAY_SORU:
                 sor(k);
                 return;
+            case ALARM:
+                alarmKur(k.metin);
+                return;
+            case ZAMANLAYICI:
+                zamanlayiciKur(k.metin);
+                return;
+            case HATIRLAT:
+                hatirlat(k.metin);
+                return;
+            case ARA:
+                kisiAra(k.metin);
+                return;
+            case OZET:
+                sabahOzeti();
+                return;
+            case BILDIRIM_OKU:
+                bildirimOku();
+                return;
+            case NOT_AL:
+                notAl(k.metin);
+                return;
+            case NOT_OKU: {
+                List<String> notlar = Notlar.liste(this);
+                if (notlar.isEmpty()) {
+                    cevap = Ayar.hitap(this) + ", kayıtlı notunuz yok.";
+                    break;
+                }
+                int ilk = Math.max(0, notlar.size() - 10);
+                uzunSoyle(notlar.size() + " notunuz var" + (ilk > 0 ? ", son 10 tanesi" : "") + ".\n"
+                        + TextUtils.join(".\n", notlar.subList(ilk, notlar.size())));
+                return;
+            }
+            case NOT_SIL:
+                onaySor("Bütün notlar silinsin mi, " + Ayar.hitap(this) + "?", new Runnable() {
+                    @Override
+                    public void run() {
+                        Notlar.kaydet(SahraService.this, new ArrayList<String>());
+                        soyle("Notlar silindi.");
+                    }
+                });
+                return;
+            case CEVIR:
+                ceviri(k.metin);
+                return;
+            case ARABA:
+                arabaModu(k.metin.equals("ac"));
+                cevap = k.metin.equals("ac") ? "Araba modu açıldı " + Ayar.hitap(this) + "."
+                        : "Araba modu kapandı " + Ayar.hitap(this) + ".";
+                break;
+            case HAFIZA_SIL:
+                Hafiza.temizle();
+                cevap = "Konuştuklarımızı unuttum " + Ayar.hitap(this) + ".";
+                break;
+            case BILINMIYOR:
+                if (toplanan == null && ayar("serbest", false) && Gemini.hazir(this) && cevrimici()) {
+                    serbestAnla(k);
+                    return;
+                }
+                cevap = new Yurutucu(this).uygula(k);
+                break;
             default:
                 cevap = new Yurutucu(this).uygula(k);
         }
@@ -886,6 +1019,9 @@ public class SahraService extends Service {
             googleGoster(k.metin);
             return;
         }
+        final boolean hatirlasin = ayar("hafiza", false);
+        final List<String[]> gecmis = hatirlasin
+                ? Hafiza.al(Ayar.al(this).getInt("hsure", 5), System.currentTimeMillis()) : new ArrayList<String[]>();
         final int numara = pencere.yukleniyor(soru);
         new Thread() {
             @Override
@@ -894,7 +1030,7 @@ public class SahraService extends Service {
                 String sorun = "";
                 if (yapay) {
                     try {
-                        String cevap = Gemini.sor(SahraService.this, soru);
+                        String cevap = Gemini.sor(SahraService.this, soru, gecmis);
                         bulunan = new Bilgi.Sonuc();
                         bulunan.baslik = soru;
                         bulunan.metin = cevap;
@@ -919,9 +1055,11 @@ public class SahraService extends Service {
                         if (!calisiyor || !pencere.guncel(numara)) return;
                         if (s != null) {
                             pencere.goster(s);
+                            sonCevap = s.metin;
+                            if (hatirlasin) Hafiza.ekle(soru, s.metin, System.currentTimeMillis());
                             // Yapay zekâ cevabı kısadır, tamamı okunur; ansiklopedi metninin başı okunur
                             List<String> parcalar = Sayfa.bol(s.metin, 350);
-                            konus(parcalar.get(0));
+                            konus(parcalar.get(0), true);
                             if (s.kaynak.startsWith("Gemini")) okumaKuyrugu.addAll(parcalar.subList(1, parcalar.size()));
                         } else if (acikca) {
                             pencere.yaz(hata);
@@ -931,6 +1069,468 @@ public class SahraService extends Service {
                         }
                         // Gemini kullanılamadıysa nedeni balonda görünür
                         if (!hata.isEmpty() && !acikca) goster(hata);
+                    }
+                });
+            }
+        }.start();
+    }
+
+    // ---------- Onay ve ek bilgi isteme ----------
+
+    /** Sahra'nın sorusuna verilen cevap. false dönerse cümle yeni komut sayılır. */
+    private interface Girdi {
+        boolean al(String cumle);
+    }
+
+    private Girdi bekleyenGirdi;
+    private long bekleyenZaman;
+    private int komutSirasi;
+    private CevrimiciSes netSes;
+    private UyandirmaMotoru motor;
+    private boolean motorHatasi;
+    private boolean netUygun;
+    private long netEngel;
+    private String sonCevap = "";
+
+    /** Soruyu söyler ve ardından cevabı dinler. */
+    private void bekle(String soru, Girdi girdi) {
+        for (Runnable r : sirada) ana.removeCallbacks(r);
+        sirada.clear();
+        bekleyenGirdi = girdi;
+        bekleyenZaman = System.currentTimeMillis();
+        komutBekle = true;
+        soyle(soru);
+    }
+
+    /** Yalnızca açık bir "evet" işi yapar. */
+    private void onaySor(String soru, final Runnable evet) {
+        bekle(soru + "\n(Evet ya da hayır deyin.)", new Girdi() {
+            @Override
+            public boolean al(String cumle) {
+                int c = Onay.coz(cumle);
+                if (c == 1) {
+                    evet.run();
+                } else if (c == -1) {
+                    soyle("Vazgeçtim " + Ayar.hitap(SahraService.this) + ".");
+                }
+                return c != 0;
+            }
+        });
+    }
+
+    private static boolean vazgecti(String cumle) {
+        return Onay.coz(cumle) == -1;
+    }
+
+    private void uzunSoyle(String metin) {
+        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
+        duyulan = "";
+        List<String> parcalar = Sayfa.bol(metin, 350);
+        konus(parcalar.get(0));
+        okumaKuyrugu.addAll(parcalar.subList(1, parcalar.size()));
+    }
+
+    private void acikSoyle(String metin, boolean paylasilabilir) {
+        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
+        duyulan = "";
+        konus(metin, paylasilabilir);
+    }
+
+    // ---------- Saat ----------
+
+    private boolean saatKapali() {
+        if (ayar("alarm", true)) return false;
+        soyle("Alarm komutları kapalı " + Ayar.hitap(this) + ". Alarm ve hatırlatıcı bölümünden açabilirsiniz.");
+        return true;
+    }
+
+    private static int simdiDakika() {
+        Calendar t = Calendar.getInstance();
+        return t.get(Calendar.HOUR_OF_DAY) * 60 + t.get(Calendar.MINUTE);
+    }
+
+    private void alarmKur(String istek) {
+        if (saatKapali()) return;
+        if (istek.isEmpty()) {
+            bekle("Saat kaça kurayım, " + Ayar.hitap(this) + "?", new Girdi() {
+                @Override
+                public boolean al(String cumle) {
+                    int dk = Zaman.saat(Komut.sade(cumle));
+                    if (dk >= 0) alarmKur(String.valueOf(dk));
+                    else if (vazgecti(cumle)) soyle("Vazgeçtim.");
+                    return dk >= 0 || vazgecti(cumle);
+                }
+            });
+            return;
+        }
+        // "+saniye": şimdiden sonrası
+        int dk = istek.startsWith("+") ? (simdiDakika() + (Integer.parseInt(istek.substring(1)) + 59) / 60) % 1440
+                : Integer.parseInt(istek);
+        soyle(Eylemler.alarm(this, dk, "Sahra")
+                ? "Tamam " + Ayar.hitap(this) + ", saat " + Zaman.yaz(dk) + " için alarm kuruyorum."
+                : Ayar.hitap(this) + ", saat uygulaması alarm isteğini açamadı.");
+    }
+
+    private void zamanlayiciKur(String istek) {
+        if (saatKapali()) return;
+        if (istek.isEmpty()) {
+            bekle("Kaç dakika sayayım?", new Girdi() {
+                @Override
+                public boolean al(String cumle) {
+                    String s = Komut.sade(cumle);
+                    int sure = Zaman.sure(s);
+                    if (sure == 0 && Zaman.rakamla(s).matches("\\d{1,3}")) sure = Integer.parseInt(Zaman.rakamla(s)) * 60;
+                    if (sure > 0) zamanlayiciKur(String.valueOf(sure));
+                    else if (vazgecti(cumle)) soyle("Vazgeçtim.");
+                    return sure > 0 || vazgecti(cumle);
+                }
+            });
+            return;
+        }
+        int sure = Integer.parseInt(istek);
+        soyle(Eylemler.zamanlayici(this, sure, "Sahra")
+                ? "Tamam " + Ayar.hitap(this) + ", " + Zaman.sureYaz(sure) + " sayıyorum."
+                : Ayar.hitap(this) + ", saat uygulaması zamanlayıcıyı açamadı.");
+    }
+
+    /** Yakın hatırlatmalar saat uygulamasına, ileri tarihliler takvime gider. */
+    private void hatirlat(final String cumle) {
+        if (saatKapali()) return;
+        String s = Komut.sade(cumle);
+        String konu = Zaman.hatirlatKonusu(cumle);
+        if (konu.isEmpty()) konu = "Hatırlatma";
+        int sure = s.contains("sonra") ? Zaman.sure(s) : 0;
+        int saat = Zaman.saat(s);
+        String h = Ayar.hitap(this);
+        if (s.matches(".*\\b(yarin|haftaya|gun sonra|pazartesi|sali|carsamba|persembe|cuma|cumartesi|pazar)\\b.*")) {
+            long baslangic = 0;
+            if (s.contains("yarin")) {
+                Calendar t = Calendar.getInstance();
+                t.add(Calendar.DAY_OF_MONTH, 1);
+                int dk = saat < 0 ? 9 * 60 : saat;
+                t.set(Calendar.HOUR_OF_DAY, dk / 60);
+                t.set(Calendar.MINUTE, dk % 60);
+                t.set(Calendar.SECOND, 0);
+                baslangic = t.getTimeInMillis();
+            }
+            soyle(Eylemler.takvimeEkle(this, baslangic, konu)
+                    ? h + ", takvimi açtım. Tarihi kontrol edip kaydedin."
+                    : h + ", takvim uygulaması açılamadı.");
+        } else if (sure > 0) {
+            boolean oldu = sure <= 3600 ? Eylemler.zamanlayici(this, sure, konu)
+                    : Eylemler.alarm(this, (simdiDakika() + sure / 60) % 1440, konu);
+            soyle(oldu ? "Tamam " + h + ", " + Zaman.sureYaz(sure) + " sonra “" + konu + "” için uyaracağım."
+                    : h + ", saat uygulaması açılamadı.");
+        } else if (saat >= 0) {
+            int dk = Zaman.yakinSaat(s, saat, simdiDakika());
+            soyle(Eylemler.alarm(this, dk, konu)
+                    ? "Tamam " + h + ", saat " + Zaman.yaz(dk) + " için “" + konu + "” alarmı kuruyorum."
+                    : h + ", saat uygulaması açılamadı.");
+        } else {
+            bekle("Ne zaman hatırlatayım?", new Girdi() {
+                @Override
+                public boolean al(String zaman) {
+                    String z = Komut.sade(zaman);
+                    if (vazgecti(zaman)) {
+                        soyle("Vazgeçtim.");
+                        return true;
+                    }
+                    if (Zaman.saat(z) < 0 && Zaman.sure(z) == 0) return false;
+                    hatirlat(zaman + " " + cumle);
+                    return true;
+                }
+            });
+        }
+    }
+
+    // ---------- Arama ----------
+
+    private void kisiAra(final String soylenen) {
+        final String h = Ayar.hitap(this);
+        final String numara = soylenen.replaceAll("[^0-9+]", "");
+        if (numara.length() >= 7 && soylenen.matches("[0-9+ ()-]+(['’]\\S*)?")) {
+            araOnayi(numara, numara);
+            return;
+        }
+        if (!Eylemler.izinVar(this, Manifest.permission.READ_CONTACTS)) {
+            soyle(h + ", önce Sahra uygulamasının Arama bölümünden rehber izni verin.");
+            return;
+        }
+        final int bu = komutSirasi;
+        final String istek = duyulan;
+        duyulan = "";
+        new Thread() {
+            @Override
+            public void run() {
+                List<String[]> bulunan = new ArrayList<String[]>();
+                try {
+                    bulunan = Eylemler.kisiler(SahraService.this, soylenen);
+                } catch (RuntimeException e) {
+                    // Rehber okunamazsa kişi bulunamadı denir
+                }
+                final List<String[]> l = bulunan;
+                ana.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!calisiyor || bu != komutSirasi) return;
+                        duyulan = istek;
+                        if (l.isEmpty()) {
+                            soyle(h + ", rehberde “" + soylenen + "” bulamadım.");
+                        } else if (l.size() == 1) {
+                            araOnayi(l.get(0)[0], l.get(0)[1]);
+                        } else {
+                            kisiSec(l.subList(0, Math.min(5, l.size())));
+                        }
+                    }
+                });
+            }
+        }.start();
+    }
+
+    private void kisiSec(final List<String[]> l) {
+        final List<String> adlar = new ArrayList<String>();
+        StringBuilder soru = new StringBuilder("Hangisini arayayım?");
+        for (String[] k : l) {
+            adlar.add(k[0]);
+            soru.append('\n').append(adlar.size()).append(". ").append(k[0]);
+        }
+        bekle(soru.toString(), new Girdi() {
+            @Override
+            public boolean al(String cumle) {
+                int i = Onay.sira(cumle, adlar);
+                if (i >= 0) araOnayi(l.get(i)[0], l.get(i)[1]);
+                else if (vazgecti(cumle)) soyle("Vazgeçtim.");
+                return i >= 0 || vazgecti(cumle);
+            }
+        });
+    }
+
+    private void araOnayi(final String ad, final String numara) {
+        onaySor("“" + ad + "” aransın mı, " + Ayar.hitap(this) + "?", new Runnable() {
+            @Override
+            public void run() {
+                duyulan = "";
+                boolean dogrudan = Eylemler.ara(SahraService.this, numara);
+                goster(dogrudan ? ad + " aranıyor." : "Numarayı yazdım, arama düğmesine siz basın.");
+            }
+        });
+    }
+
+    // ---------- Sabah özeti, bildirim, not, çeviri ----------
+
+    private void sabahOzeti() {
+        final int bu = komutSirasi;
+        final String istek = duyulan;
+        duyulan = "";
+        goster("Özeti hazırlıyorum…");
+        new Thread() {
+            @Override
+            public void run() {
+                Pano.yenile(SahraService.this);
+                final List<String> takvim = ayar("stak", false) ? Eylemler.bugun(SahraService.this) : null;
+                ana.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!calisiyor || bu != komutSirasi) return;
+                        StringBuilder o = new StringBuilder("Günaydın " + Ayar.hitap(SahraService.this) + ".");
+                        if (ayar("shava", true) && !Pano.hava(SahraService.this).isEmpty()) {
+                            o.append("\nHava: ").append(Pano.hava(SahraService.this)).append('.');
+                        }
+                        if (ayar("skur", true) && !Pano.kurlar(SahraService.this).isEmpty()) {
+                            o.append('\n').append(Pano.kurlar(SahraService.this).replace("≈", "yaklaşık"));
+                        }
+                        if (ayar("stak", false)) {
+                            if (takvim == null) o.append("\nTakvimi okuyamadım; izni kontrol edin.");
+                            else if (takvim.isEmpty()) o.append("\nBugün için takvimde kayıt yok.");
+                            else o.append("\nBugün: ").append(TextUtils.join("; ", takvim)).append('.');
+                        }
+                        if (ayar("ssoz", true)) o.append("\nGünün sözü: ").append(Pano.soz(SahraService.this)).append('.');
+                        duyulan = istek;
+                        uzunSoyle(o.toString());
+                    }
+                });
+            }
+        }.start();
+    }
+
+    private void bildirimOku() {
+        String h = Ayar.hitap(this);
+        if (!ayar("bildirim", false) || !BildirimService.erisimVar(this)) {
+            soyle(h + ", önce Bildirim okuma bölümünden özelliği ve bildirim erişimini açın.");
+            return;
+        }
+        List<BildirimService.Kayit> l = BildirimService.al(this);
+        if (l.isEmpty()) {
+            soyle(h + ", seçtiğiniz uygulamalardan yeni bildirim yok.");
+            return;
+        }
+        StringBuilder s = new StringBuilder(l.size() + " bildirim var.");
+        for (BildirimService.Kayit k : l) s.append('\n').append(k.oku()).append('.');
+        uzunSoyle(s.toString());
+    }
+
+    private void notAl(String metin) {
+        if (metin.isEmpty()) {
+            bekle("Ne not edeyim?", new Girdi() {
+                @Override
+                public boolean al(String cumle) {
+                    if (vazgecti(cumle)) soyle("Vazgeçtim.");
+                    else notAl(cumle);
+                    return true;
+                }
+            });
+            return;
+        }
+        Notlar.ekle(this, metin);
+        soyle("Not aldım " + Ayar.hitap(this) + ": " + metin);
+    }
+
+    private void ceviri(String istek) {
+        final int ayrac = istek.indexOf('|');
+        final String dil = istek.substring(0, ayrac);
+        String metin = istek.substring(ayrac + 1);
+        if (metin.isEmpty()) metin = sonCevap;
+        final String h = Ayar.hitap(this);
+        if (!Gemini.hazir(this) || !cevrimici()) {
+            soyle(h + ", çeviri için internet ve Gemini anahtarı gerekiyor.");
+            return;
+        }
+        if (metin.isEmpty()) {
+            bekle("Neyi çevireyim?", new Girdi() {
+                @Override
+                public boolean al(String cumle) {
+                    if (vazgecti(cumle)) soyle("Vazgeçtim.");
+                    else ceviri(dil + "|" + cumle);
+                    return true;
+                }
+            });
+            return;
+        }
+        final String asil = metin;
+        final String adi = dilAdi(dil);
+        final int bu = komutSirasi;
+        duyulan = "";
+        goster("Çeviriyorum…");
+        new Thread() {
+            @Override
+            public void run() {
+                String sonuc = null;
+                String sorun = "";
+                try {
+                    sonuc = Gemini.cevir(SahraService.this, adi, asil);
+                } catch (Gemini.Hata e) {
+                    sorun = e.getMessage();
+                }
+                final String c = sonuc;
+                final String hata = sorun;
+                ana.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!calisiyor || bu != komutSirasi) return;
+                        if (c == null) {
+                            soyle(hata);
+                            return;
+                        }
+                        goster(adi + ": " + c);
+                        konus(c, true);
+                        // Telefon sesiyle okunacaksa hedef dilin sesi kullanılır
+                        if (konusmaHazir && !"turkce".equals(dil) && !ayar("sesNet", false)) {
+                            konusma.stop();
+                            konusma.setLanguage(Locale.forLanguageTag(dilKodu(dil)));
+                            konusma.speak(c, TextToSpeech.QUEUE_FLUSH, null, "sahra");
+                        }
+                    }
+                });
+            }
+        }.start();
+    }
+
+    private static final String[][] DIL_BILGISI = {
+            {"ingilizce", "İngilizce", "en-US"}, {"almanca", "Almanca", "de-DE"}, {"fransizca", "Fransızca", "fr-FR"},
+            {"arapca", "Arapça", "ar"}, {"rusca", "Rusça", "ru-RU"}, {"ispanyolca", "İspanyolca", "es-ES"},
+            {"italyanca", "İtalyanca", "it-IT"}, {"farsca", "Farsça", "fa-IR"}, {"turkce", "Türkçe", "tr-TR"}};
+
+    private static String dilAdi(String k) {
+        for (String[] d : DIL_BILGISI) if (d[0].equals(k)) return d[1];
+        return k;
+    }
+
+    private static String dilKodu(String k) {
+        for (String[] d : DIL_BILGISI) if (d[0].equals(k)) return d[2];
+        return "tr-TR";
+    }
+
+    // ---------- Araba modu ----------
+
+    private void arabaModu(boolean ac) {
+        Ayar.al(this).edit().putBoolean("araba", ac).apply();
+        if (ac) {
+            Eylemler.baslat(this, new Intent(this, ArabaActivity.class));
+        } else {
+            ArabaActivity.kapat();
+        }
+    }
+
+    /** Araba ekranındaki Yol ve Ara düğmeleri: hedefi ya da kişiyi sesle sorar. */
+    private void hedefSor(final String tur) {
+        sustur();
+        duyulan = "";
+        bekle(tur.equals("yol") ? "Nereye gidelim?" : "Kimi arayayım?", new Girdi() {
+            @Override
+            public boolean al(String cumle) {
+                if (vazgecti(cumle)) {
+                    soyle("Vazgeçtim.");
+                } else if (tur.equals("yol")) {
+                    Komut k = Komut.coz(cumle + " için yol tarifi");
+                    tekKomut(k.tur == Komut.Tur.YOL_TARIFI ? k : Komut.coz(cumle), null);
+                } else {
+                    kisiAra(cumle);
+                }
+                return true;
+            }
+        });
+    }
+
+    // ---------- Serbest cümle ----------
+
+    /** Kalıba uymayan cümle için yapay zekâdan komut önerisi alır; kararı telefon verir. */
+    private void serbestAnla(final Komut asil) {
+        final int bu = komutSirasi;
+        final String istek = duyulan;
+        duyulan = "";
+        goster("Anlamaya çalışıyorum…");
+        new Thread() {
+            @Override
+            public void run() {
+                String oneri = "";
+                String sorun = "";
+                try {
+                    oneri = Gemini.komutOner(SahraService.this, asil.cumle);
+                } catch (Gemini.Hata e) {
+                    sorun = e.getMessage();
+                }
+                final String o = oneri;
+                final String hata = sorun;
+                ana.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!calisiyor || bu != komutSirasi) return;
+                        duyulan = istek;
+                        final Komut k = o.isEmpty() ? null : Komut.coz(o);
+                        Serbest.Karar karar = k == null ? Serbest.Karar.REDDET : Serbest.karar(k.tur);
+                        if (karar == Serbest.Karar.CALISTIR) {
+                            tekKomut(k, null);
+                        } else if (karar == Serbest.Karar.ONAY_ISTE) {
+                            onaySor("Şunu yapayım mı: “" + o + "”?", new Runnable() {
+                                @Override
+                                public void run() {
+                                    tekKomut(k, null);
+                                }
+                            });
+                        } else {
+                            soyle(hata.isEmpty() ? Ayar.hitap(SahraService.this)
+                                    + ", bunu bir komuta çeviremedim. Soru için “sor” diyerek başlayın." : hata);
+                        }
                     }
                 });
             }
@@ -950,6 +1550,7 @@ public class SahraService extends Service {
         sonSoz = "";
         bekleyenSoz = null;
         if (konusma != null) konusma.stop();
+        if (netSes != null) netSes.durdur();
         konusuyor = false;
         durum();
     }
@@ -972,14 +1573,22 @@ public class SahraService extends Service {
         });
     }
 
+    /** Telefonun sesiyle konuşur. Rehber, bildirim, not ve ekran yazıları hep bu yolu kullanır. */
     private void konus(String metin) {
+        konus(metin, false);
+    }
+
+    /** paylasilabilir: yapay zekâ ya da ansiklopedi cevabı; açıksa çevrimiçi sesle okunabilir. */
+    private void konus(String metin, boolean paylasilabilir) {
+        netUygun = paylasilabilir;
         okumaKuyrugu.clear();
         if (!konusmaHazir) {
             bekleyenSoz = metin;
             return;
         }
         // Sahra kendi sesini komut sanmasın
-        if (dinliyor) dinlemeyiBirak();
+        if (dinliyor || motor != null && motor.dinliyor()) dinlemeyiBirak();
+        if (netSes != null) netSes.durdur();
         konusuyor = true;
         durum();
         yerelSes = false;
@@ -987,7 +1596,36 @@ public class SahraService extends Service {
         seslendir(metin);
     }
 
-    private void seslendir(String metin) {
+    private void seslendir(final String metin) {
+        if (netUygun && !yerelSes && ayar("sesNet", false) && Gemini.hazir(this) && cevrimici()
+                && System.currentTimeMillis() > netEngel && metin.length() <= 700) {
+            konusma.stop();
+            netSes.soyle(metin, new CevrimiciSes.Sonuc() {
+                @Override
+                public void bitti() {
+                    SahraService.this.bitti();
+                }
+
+                @Override
+                public void olmadi(String neden) {
+                    // Bir süre telefon sesi kullanılır; kota boşuna zorlanmaz
+                    netEngel = System.currentTimeMillis() + 5 * 60000;
+                    netUygun = false;
+                    goster("Çevrimiçi ses kullanılamadı: " + neden);
+                    if (ayar("sesYedek", true)) {
+                        yerelSeslendir(metin);
+                    } else {
+                        SahraService.this.bitti();
+                    }
+                }
+            });
+            return;
+        }
+        yerelSeslendir(metin);
+    }
+
+    private void yerelSeslendir(String metin) {
+        konusma.setLanguage(new Locale("tr", "TR"));
         Voice v = Ses.sec(this, Ses.turkce(konusma, cevrimici() && !yerelSes));
         if (v != null) konusma.setVoice(v);
         konusma.setSpeechRate(Ayar.al(this).getInt("hiz", 100) / 100f);

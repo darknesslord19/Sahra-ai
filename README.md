@@ -17,9 +17,22 @@ Dikkat: testkey herkese açık bir anahtardır, imza APK'nın kimden geldiğini 
 ## Kendi komutların ve yedek
 Uygulamadaki "Kendi komutlarım" bölümünden komut ekleyin. Komutlar ve ayarlar İndirilenler/Sahra/sahra-yedek.json dosyasına yedeklenir (Android 10+).
 
-## Gemini (isteğe bağlı)
-Sorular için uygulamaya kendi Gemini anahtarınızı girebilirsiniz. Anahtarı koda, depoya ya da APK'ya koymayın.
+## Yetenekler (0.2)
+Ayar ekranında her satır alttan açılan bir panel getirir.
+
+- Alarm, zamanlayıcı, hatırlatma; onaylı arama
+- Fener, kamera, parlaklık, yol tarifi, ayar ekranları
+- Arka planda kalma yardımı
+- Sabah özeti, seçili uygulamaların bildirimleri, sesli not, çeviri, araba modu
+- İsteğe bağlı: serbest cümle anlama, sohbet hafızası, çevrimiçi ses (Gemini)
+- Deneysel: "Sahra" adını telefonda tanıma. Vosk kitaplığı ve vosk-model-small-tr-0.3 modeli (Apache 2.0); model uygulama içinden indirilir.
+
+İkonlar `araclar/ikonlar.py` ile üretilir.
+
+## Gizlilik
+- Gemini'ye yalnızca ilgili metin gider. Anahtarı koda, depoya ya da APK'ya koymayın; yedeğe de girmez.
+- Rehber, bildirim, not ve ekran yazıları Gemini'ye gönderilmez. Metni siz "çevir" ya da "sor" diyerek verirseniz o metin gider.
+- Arama onaysız yapılmaz. Banka uygulamaları ve kod içeren bildirimler kural dayalı süzgeçle atlanır; süzgeç her biçimi garanti edemez.
 
 ## Durum
-Komutlar hazır kalıplarla anlaşılır; Gemini yalnızca sorularda kullanılır.
-İnternetsiz ses tanıma, telefonun Türkçe çevrimdışı dil desteğine bağlıdır.
+Komutlar telefonda hazır kalıplarla anlaşılır. İnternetsiz ses tanıma, telefonun Türkçe çevrimdışı dil desteğine bağlıdır.

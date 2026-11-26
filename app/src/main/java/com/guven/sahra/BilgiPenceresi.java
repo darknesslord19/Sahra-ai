@@ -206,7 +206,7 @@ final class BilgiPenceresi {
         }), new LinearLayout.LayoutParams(0, dp(44), 1f));
         LinearLayout.LayoutParams ol = new LinearLayout.LayoutParams(0, dp(44), 1f);
         ol.leftMargin = dp(8);
-        dugmeler.addView(dugme("🔊 Oku", false, okuIstegi), ol);
+        dugmeler.addView(dugme("Oku", false, okuIstegi), ol);
         LinearLayout.LayoutParams kl = new LinearLayout.LayoutParams(0, dp(44), 1f);
         kl.leftMargin = dp(8);
         dugmeler.addView(dugme("Kapat", true, new Runnable() {

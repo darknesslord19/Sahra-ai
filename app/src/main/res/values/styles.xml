@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Alttan kayan ayar paneli -->
+    <style name="PanelHareketi">
+        <item name="android:windowEnterAnimation">@anim/panel_gir</item>
+        <item name="android:windowExitAnimation">@anim/panel_cik</item>
+    </style>
+</resources>

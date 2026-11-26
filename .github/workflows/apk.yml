@@ -49,4 +49,4 @@ jobs:
       - name: Sürüm olarak yayınla
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "v0.1.${{ github.run_number }}" Sahra.apk --title "Sahra 0.1.${{ github.run_number }}" --notes "testkey ile imzalı deneme APK" --target "${{ github.sha }}"
+        run: gh release create "v0.2.${{ github.run_number }}" Sahra.apk --title "Sahra 0.2.${{ github.run_number }}" --notes "testkey ile imzalı deneme APK" --target "${{ github.sha }}"

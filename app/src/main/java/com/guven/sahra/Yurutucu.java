@@ -73,6 +73,27 @@ final class Yurutucu {
                 if (u == null || !baslat(u.paket)) return h + ", " + k.metin + " uygulamasını açamadım.";
                 return tamam + u.ad + " açılıyor.";
             }
+            case FENER:
+                return Eylemler.fener(c, k.metin.equals("ac"))
+                        ? tamam + (k.metin.equals("ac") ? "Feneri açtım." : "Feneri kapattım.") : h + ", feneri kullanamadım.";
+            case KAMERA:
+                return Eylemler.kamera(c) ? tamam + "Kamerayı açıyorum." : h + ", kamerayı açamadım.";
+            case PARLAKLIK: {
+                int yeni = Eylemler.parlaklik(c, k.metin);
+                return yeni < 0 ? h + ", önce Hızlı kontroller bölümünden sistem ayarı iznini verin."
+                        : tamam + "Parlaklık yüzde " + yeni + ".";
+            }
+            case YOL_TARIFI: {
+                String yer = k.metin;
+                if (yer.equals("ev") || yer.equals("iş")) {
+                    yer = Ayar.al(c).getString(yer.equals("ev") ? "evAdresi" : "isAdresi", "");
+                    if (yer.isEmpty()) return h + ", önce Araba modu bölümüne " + (k.metin.equals("ev") ? "ev" : "iş") + " adresini yazın.";
+                }
+                return Eylemler.yolTarifi(c, yer) ? tamam + k.metin + " için yol tarifini açıyorum." : h + ", harita uygulamasını açamadım.";
+            }
+            case AYAR_AC:
+                return Eylemler.ayarEkrani(c, k.metin)
+                        ? tamam + "Ayar ekranını açıyorum. Düğmeyi siz açıp kapatın." : h + ", ayar ekranını açamadım.";
             case YAZ:
             case GONDER:
             case EKRAN_OKU:
