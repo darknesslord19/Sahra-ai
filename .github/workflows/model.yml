@@ -27,7 +27,10 @@ jobs:
                   subprocess.run(['espeak-ng', '-v', 'tr', '-s', str(hiz), '-w', 'ham.wav', c], check=True)
                   subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', 'ham.wav', '-af', 'adelay=500,apad=pad_dur=1', '-ar', '16000', '-ac', '1', 's.wav'], check=True)
                   w = wave.open('s.wav')
-                  r = KaldiRecognizer(m, 16000, json.dumps(['sahra', '[unk]']))
+                  s2 = KaldiRecognizer(m, 16000)
+                  s2.AcceptWaveform(wave.open('s.wav').readframes(10 ** 7))
+                  print('SONUC serbest', hiz, c, '->', json.loads(s2.FinalResult()).get('text'))
+                  r = KaldiRecognizer(m, 16000, json.dumps(['sahra', '[unk]'], ensure_ascii=False))
                   r.SetWords(True)
                   bulunan = []
                   while True:
@@ -39,4 +42,6 @@ jobs:
                   bulunan += json.loads(r.FinalResult()).get('result', [])
                   print('SONUC deneme', hiz, c, '->', [(x['word'], round(x['conf'], 2)) for x in bulunan])
           PY
-          python3 dene.py 2>&1 | grep -E 'SONUC|Warning|Ignoring|missing' | head -60
+          python3 dene.py > cikti.txt 2>&1
+          grep -E 'SONUC' cikti.txt
+          grep -iE 'ignoring|missing|grammar' cikti.txt | head -10 | sed 's/^/SONUC uyari /'
