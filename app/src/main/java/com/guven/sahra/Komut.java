@@ -11,7 +11,9 @@ public final class Komut {
         MUZIK_CAL, MUZIK_ARA, MUZIK_DURDUR, SONRAKI, ONCEKI,
         YOUTUBE, WEB_ARA, UYGULAMA_AC, YAZ, GONDER, EKRAN_OKU, TIKLA,
         GERI, ANA_EKRAN, SON_UYGULAMALAR, BILDIRIMLER, ASAGI, YUKARI,
-        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, OKUMA_DUR, HAVA, KUR, EFEKT, GUZEL_SOZ, YAPAY_SORU, KAPAN, BILINMIYOR
+        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, OKUMA_DUR, HAVA, KUR, EFEKT, GUZEL_SOZ, YAPAY_SORU, KAPAN,
+        ALARM, ZAMANLAYICI, HATIRLAT, ARA, FENER, KAMERA, PARLAKLIK, YOL_TARIFI, AYAR_AC,
+        OZET, BILDIRIM_OKU, NOT_AL, NOT_OKU, NOT_SIL, CEVIR, ARABA, HAFIZA_SIL, BILINMIYOR
     }
 
     public final Tur tur;
@@ -78,12 +80,32 @@ public final class Komut {
         m = Pattern.compile("^(?:geminiye sor|gemini ye sor|yapay zekaya sor|gemini|sor)[ :,]+(.+)$").matcher(s);
         if (m.find()) return parca(Tur.YAPAY_SORU, ham, m);
 
+        // Not ve çeviri yazdırmadan önce: içlerindeki "yaz" sözcüğü komut sayılmaz
+        m = Pattern.compile("^(?:not al|not et|sunu not al|bir not al|not yaz)[ :,]+(.+)$").matcher(s);
+        if (m.find()) return parca(Tur.NOT_AL, ham, m);
+        m = Pattern.compile("^(.+?) (?:diye )?not (?:al|et)$").matcher(s);
+        if (m.find()) return parca(Tur.NOT_AL, ham, m);
+        if (s.matches("not (al|et)")) return new Komut(Tur.NOT_AL, "");
+        m = Pattern.compile("^(?:bunu |su cumleyi )?(" + DILLER + ")(?:ye|ya) cevir[ :,]+(.+)$").matcher(s);
+        if (m.find()) return ceviri(m.group(1), ham.substring(m.start(2), m.end(2)));
+        m = Pattern.compile("^(.+?) (" + DILLER + ")(?:ye|ya) cevir$").matcher(s);
+        if (m.find()) {
+            String metin = ham.substring(m.start(1), m.end(1));
+            if (m.group(1).matches("bunu|su cumleyi|sunu")) metin = "";
+            return ceviri(m.group(2), metin.replaceAll("['’](y?[ıiuü])$", ""));
+        }
+        m = Pattern.compile("^(" + DILLER + ")(?:ye|ya) cevir$").matcher(s);
+        if (m.find()) return ceviri(m.group(1), "");
+
         // Yazdırma en önde: yazılacak metnin içindeki sözcükler komut sayılmaz
         m = Pattern.compile("^(?:mesaj yaz|mesaja yaz|sunu yaz|yaz)[ :,]+(.+)$").matcher(s);
         if (m.find()) return parca(Tur.YAZ, ham, m);
         m = Pattern.compile("^(.+) yaz$").matcher(s);
         if (m.find()) return parca(Tur.YAZ, ham, m);
 
+        if (s.matches("(gunaydin)( sahra| hocam)?|(sabah|gunun|gunluk) ozeti?( ver| soyle| oku)?")) return k(Tur.OZET);
+        Komut yeni = yeniKomut(ham, s);
+        if (yeni != null) return yeni;
         if (s.matches("(merhaba|selam|gunaydin|iyi aksamlar|naber|nasilsin)( .*)?")) return k(Tur.SELAM);
         if (s.matches(".*\\bsaat kac\\b.*")) return k(Tur.SAAT);
         if (s.matches(".*(bugun gunlerden|tarih ne|bugunun tarihi|ayin kaci).*")) return k(Tur.TARIH);
@@ -145,6 +167,20 @@ public final class Komut {
             if (s.matches("(rengini |robotu |rengin )?" + r + "( yap| ol)")) return new Komut(Tur.RENK, r);
         }
 
+        // Arama: web ve YouTube aramaları yukarıda ayrıldığı için kalan "X ara" kişi aramasıdır
+        m = Pattern.compile("^(?:telefonla )?(.+?)(?: telefonla| i telefonla)? (?:ara|arar misin)$").matcher(s);
+        if (m.find() && m.group(1).split(" ").length <= 4 && !m.group(1).matches("(.* )?(internet\\S*|google\\S*|youtube\\S*|chrome\\S*|web\\S*|arama)( .*)?")) {
+            return parca(Tur.ARA, ham, m);
+        }
+        m = Pattern.compile("^(.+?) icin yol tarifi(?: ver| ac| al| goster)?$").matcher(s);
+        if (m.find()) return yer(ham, m);
+        m = Pattern.compile("^(.+?) (?:yol tarifi)(?: ver| ac| al| goster)?$").matcher(s);
+        if (m.find()) return yer(ham, m);
+        m = Pattern.compile("^yol tarifi (?:ver |ac |al )?(.+)$").matcher(s);
+        if (m.find()) return yer(ham, m);
+        m = Pattern.compile("^(.+?) (?:git|gidelim|gotur|beni gotur|navigasyon(?:u)?(?: ac| baslat)?)$").matcher(s);
+        if (m.find() && (m.group(1).matches(".*(e|a)") || ham.indexOf('\'') > 0 || ham.indexOf('’') > 0)) return yer(ham, m);
+
         m = Pattern.compile("^(.+?) (?:tikla|bas|dokun)$").matcher(s);
         if (m.find()) {
             Komut t = parca(Tur.TIKLA, ham, m);
@@ -167,6 +203,59 @@ public final class Komut {
             return new Komut(Tur.GOOGLE_SORU, ham);
         }
         return new Komut(Tur.BILINMIYOR, ham);
+    }
+
+    static final String DILLER = "ingilizce|almanca|fransizca|arapca|rusca|ispanyolca|italyanca|farsca|turkce";
+
+    private static Komut ceviri(String dil, String metin) {
+        return new Komut(Tur.CEVIR, dil + "|" + metin.trim());
+    }
+
+    private static Komut yer(String ham, Matcher m) {
+        String y = ham.substring(m.start(1), m.end(1)).replaceAll("['’](y?[ea])$", "").trim();
+        String s = sade(y);
+        if (s.matches("ev|eve|evime|eve dogru")) y = "ev";
+        else if (s.matches("is|ise|isyeri|is yerine|isime|is yerime")) y = "iş";
+        return new Komut(Tur.YOL_TARIFI, y);
+    }
+
+    /** Alarm, hızlı kontroller, bildirim, not ve araba modu komutları; uymuyorsa null. */
+    private static Komut yeniKomut(String ham, String s) {
+        if (s.matches(".*\\balarm\\w*\\b.*(kur|ayarla|olustur)$|(.* )?(beni )?uyandir$|.*alarm kur\\w*( .*)?")) {
+            int sure = Zaman.sure(s);
+            if (sure > 0 && s.contains("sonra")) return new Komut(Tur.ALARM, "+" + sure);
+            int dk = Zaman.saat(s);
+            return new Komut(Tur.ALARM, dk < 0 ? "" : String.valueOf(dk));
+        }
+        if (s.matches(".*(hatirlat|hatirlatici)( kur| ekle| olustur| et)?(r misin)?$|(hatirlat|hatirlatici)[ :,].*")) {
+            return new Komut(Tur.HATIRLAT, ham);
+        }
+        if (s.matches(".*(zamanlayici|sayac|geri sayim|kronometre).*(kur|baslat|ac|say|ayarla)$|(.+ )?(dakika|saniye|saat) (say|tut)$")) {
+            int sure = Zaman.sure(s);
+            return new Komut(Tur.ZAMANLAYICI, sure > 0 ? String.valueOf(sure) : "");
+        }
+        if (s.matches("(el )?fener(i|ini)? (ac|yak)|isik (ac|yak)")) return new Komut(Tur.FENER, "ac");
+        if (s.matches("(el )?fener(i|ini)? (kapat|sondur)|isigi (kapat|sondur)")) return new Komut(Tur.FENER, "kapat");
+        if (s.matches("(kamera(yi)?|fotograf makinesi(ni)?) ac|(fotograf|resim) cek")) return k(Tur.KAMERA);
+        if (s.matches("(ekran )?(parlakligi(ni)?|isigini) (artir|yukselt|ac|fazlalastir)")) return new Komut(Tur.PARLAKLIK, "+");
+        if (s.matches("(ekran )?(parlakligi(ni)?|isigini) (azalt|kis|dusur)")) return new Komut(Tur.PARLAKLIK, "-");
+        Matcher m = Pattern.compile("^(?:ekran )?parlakligi(?:ni)? (?:yuzde )?(\\d{1,3})(?: ?(?:e|a|ye|ya))?(?: yap| ayarla)?$").matcher(s);
+        if (m.find()) return new Komut(Tur.PARLAKLIK, m.group(1));
+        m = Pattern.compile("^(wi[- ]?fi|vay[- ]?fay|kablosuz ag|bluetooth|blutut|konum|gps|ucak modu|mobil veri|internet paylasimi|hotspot)(?: ?(?:u|yu|i|yi|nu|ni|unu))?(?: ayarlarini| ayari| ayarlari)? (?:ac|kapat|goster)$").matcher(s);
+        if (m.find()) {
+            String a = m.group(1);
+            String tur = a.startsWith("w") || a.startsWith("v") || a.startsWith("kab") ? "wifi"
+                    : a.startsWith("bl") ? "bluetooth" : a.equals("konum") || a.equals("gps") ? "konum"
+                    : a.equals("ucak modu") ? "ucak" : a.equals("mobil veri") ? "veri" : "paylasim";
+            return new Komut(Tur.AYAR_AC, tur);
+        }
+        if (s.matches("(bildirimleri(mi)?|bildirimlerimi|(yeni|gelen) (mesajlar|bildirimler)(i|imi)?) oku(r musun)?")) return k(Tur.BILDIRIM_OKU);
+        if (s.matches("(notlarimi|notlari) (oku|goster|soyle)|notlarim( neler)?")) return k(Tur.NOT_OKU);
+        if (s.matches("(notlarimi|notlari|tum notlari|butun notlari) (sil|temizle)")) return k(Tur.NOT_SIL);
+        if (s.matches("araba modu(nu)?( ac| baslat)?|surus modu(nu)?( ac)?")) return new Komut(Tur.ARABA, "ac");
+        if (s.matches("(araba|surus) modu(nu|ndan)? (kapat|bitir|cik)")) return new Komut(Tur.ARABA, "kapat");
+        if (s.matches("(hafizayi|sohbet hafizasini|konusmayi) (temizle|sil|unut)|konustuklarimizi unut")) return k(Tur.HAFIZA_SIL);
+        return null;
     }
 
     /** Eşleşen bölümü, Türkçe harfleri korunmuş asıl cümleden alır. */

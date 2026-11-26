@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- araclar/ikonlar.py tarafından üretildi -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:pathData="M6,3h8.500L19,7.500V19a2,2 0 0 1-2,2H6a2,2 0 0 1-2-2V5a2,2 0 0 1 2-2zM14,3v5h5M8,12.500h7M8,16.500h5" android:fillColor="#00000000" android:strokeColor="#FFC9CFDC"
+        android:strokeWidth="1.7" android:strokeLineCap="round" android:strokeLineJoin="round" />
+</vector>

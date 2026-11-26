@@ -26,10 +26,11 @@ import java.util.Locale;
 final class Yedek {
     static final String DOSYA = "sahra-yedek.json";
     private static final String[] YAZI_AYARLARI = {"hitap", "renk", "muzik", "ses", "davranis",
-            "sehir", "enlem", "boylam", "kendiSozler"};
-    private static final String[] SAYI_AYARLARI = {"boyut", "hiz", "ton", "efektDakika"};
+            "sehir", "enlem", "boylam", "kendiSozler", "netSes"};
+    private static final String[] SAYI_AYARLARI = {"boyut", "hiz", "ton", "efektDakika", "hsure", "hassas"};
 
-    private static final String[] ACMA_AYARLARI = {"surekli", "yaziAcik", "havaAcik", "sozAcik", "kurAcik", "efektAcik"};
+    private static final String[] ACMA_AYARLARI = {"surekli", "yaziAcik", "havaAcik", "sozAcik", "kurAcik", "efektAcik",
+            "alarm", "shava", "skur", "stak", "ssoz", "sesYedek"};
 
     // ---------- Komutlar ----------
 
@@ -103,6 +104,8 @@ final class Yedek {
             if (a.has("hiz")) e.putInt("hiz", sinirla(a.optInt("hiz", 100), 70, 140));
             if (a.has("ton")) e.putInt("ton", sinirla(a.optInt("ton", 100), 70, 140));
             for (String ad : ACMA_AYARLARI) if (a.has(ad)) e.putBoolean(ad, a.optBoolean(ad));
+            if (a.has("hsure")) e.putInt("hsure", sinirla(a.optInt("hsure", 5), 1, 15));
+            if (a.has("hassas")) e.putInt("hassas", sinirla(a.optInt("hassas", 5), 1, 10));
             if (a.has("efektDakika")) e.putInt("efektDakika", sinirla(a.optInt("efektDakika", 5), 1, 30));
             e.remove("havaZamani");
             e.apply();

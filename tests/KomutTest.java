@@ -11,6 +11,13 @@ public class KomutTest {
         }
     }
 
+    static void denetle(String ad, boolean dogru) {
+        if (!dogru) {
+            hata++;
+            System.out.println("HATA " + ad);
+        }
+    }
+
     public static void main(String[] a) {
         t("Merhaba Sahra", "SELAM", "");
         t("Sahra", "SELAM", "");
@@ -125,6 +132,86 @@ public class KomutTest {
             hata++;
             System.out.println("HATA duz: " + duz);
         }
+        t("7'ye alarm kur", "ALARM", "420");
+        t("yediye alarm kur", "ALARM", "420");
+        t("saat 07:30 alarm kur", "ALARM", "450");
+        t("sabah altı buçukta beni uyandır", "ALARM", "390");
+        t("akşam sekize alarm kur", "ALARM", "1200");
+        t("yirmi iki otuza alarm kur", "ALARM", "1350");
+        t("saat 8'e çeyrek kala alarm kur", "ALARM", "465");
+        t("10 dakika sonra alarm kur", "ALARM", "+600");
+        t("alarm kur", "ALARM", "");
+        t("10 dakika say", "ZAMANLAYICI", "600");
+        t("1 saat 30 dakika zamanlayıcı kur", "ZAMANLAYICI", "5400");
+        t("yarım saat zamanlayıcı kur", "ZAMANLAYICI", "1800");
+        t("akşam 8'de ilacı hatırlat", "HATIRLAT", "akşam 8'de ilacı hatırlat");
+        t("Annemi ara", "ARA", "Annemi");
+        t("Sahra, Ahmet'i ara", "ARA", "Ahmet'i");
+        t("Chrome'da hava durumu ara", "WEB_ARA", "hava durumu");
+        t("YouTube'da yemek tarifi ara", "YOUTUBE", "yemek tarifi");
+        t("feneri aç", "FENER", "ac");
+        t("feneri kapat", "FENER", "kapat");
+        t("kamerayı aç", "KAMERA", "");
+        t("parlaklığı artır", "PARLAKLIK", "+");
+        t("parlaklığı yüzde 50 yap", "PARLAKLIK", "50");
+        t("Wi-Fi aç", "AYAR_AC", "wifi");
+        t("wifi'yi aç", "AYAR_AC", "wifi");
+        t("bluetooth'u kapat", "AYAR_AC", "bluetooth");
+        t("eve yol tarifi", "YOL_TARIFI", "ev");
+        t("eve git", "YOL_TARIFI", "ev");
+        t("Kızılay için yol tarifi", "YOL_TARIFI", "Kızılay");
+        t("geri git", "GERI", "");
+        t("ana ekrana git", "ANA_EKRAN", "");
+        t("günaydın", "OZET", "");
+        t("bildirimleri oku", "BILDIRIM_OKU", "");
+        t("bildirimleri aç", "BILDIRIMLER", "");
+        t("mesajları oku", "EKRAN_OKU", "");
+        t("not al süt alınacak", "NOT_AL", "süt alınacak");
+        t("Not al: Ayşe'ye mektup yaz", "NOT_AL", "Ayşe'ye mektup yaz");
+        t("ekmek alınacak diye not al", "NOT_AL", "ekmek alınacak");
+        t("notlarımı oku", "NOT_OKU", "");
+        t("notlarımı sil", "NOT_SIL", "");
+        t("İngilizceye çevir nasılsın", "CEVIR", "ingilizce|nasılsın");
+        t("bunu İngilizceye çevir", "CEVIR", "ingilizce|");
+        t("günaydın'ı almancaya çevir", "CEVIR", "almanca|günaydın");
+        t("araba modu", "ARABA", "ac");
+        t("araba modunu kapat", "ARABA", "kapat");
+        t("müziği kapat", "MUZIK_DURDUR", "");
+        t("sesi kapat", "SESSIZ", "");
+        t("WhatsApp aç", "UYGULAMA_AC", "WhatsApp");
+        t("mesaj yaz yarın beni ara", "YAZ", "yarın beni ara");
+        denetle("sure", com.guven.sahra.Zaman.sure("2 bucuk saat") == 9000);
+        java.util.List<String> rehber = java.util.Arrays.asList("Annem", "Ahmet Yılmaz", "Ahmet Kaya", "Ali", "Anne Tarafı Dayı");
+        denetle("annemi", com.guven.sahra.KisiBul.bul("Annemi", rehber).toString().equals("[0]"));
+        denetle("ahmet", com.guven.sahra.KisiBul.bul("Ahmet'i", rehber).toString().equals("[1, 2]"));
+        denetle("ali", com.guven.sahra.KisiBul.bul("Ali'yi", rehber).toString().equals("[3]"));
+        denetle("yok", com.guven.sahra.KisiBul.bul("Zeynep'i", rehber).isEmpty());
+        denetle("evet", com.guven.sahra.Onay.coz("evet gönder") == 1 && com.guven.sahra.Onay.coz("Tamam.") == 1);
+        denetle("hayir", com.guven.sahra.Onay.coz("hayır gönderme") == -1);
+        denetle("belirsiz", com.guven.sahra.Onay.coz("tamam mı değil mi") == 0 && com.guven.sahra.Onay.coz("annemi ara") == 0);
+        denetle("sira", com.guven.sahra.Onay.sira("ikinci", rehber) == 1 && com.guven.sahra.Onay.sira("Ahmet Kaya", rehber) == 2);
+        denetle("serbest", com.guven.sahra.Serbest.ayikla("KOMUT: sesi kıs").equals("sesi kıs"));
+        denetle("serbest-yok", com.guven.sahra.Serbest.ayikla("YOK").isEmpty() && com.guven.sahra.Serbest.ayikla("Tabii!\nKOMUT: gönder").isEmpty());
+        denetle("karar", com.guven.sahra.Serbest.karar(Komut.coz("gönder").tur) == com.guven.sahra.Serbest.Karar.ONAY_ISTE
+                && com.guven.sahra.Serbest.karar(Komut.coz("Tamam butonuna tıkla").tur) == com.guven.sahra.Serbest.Karar.ONAY_ISTE
+                && com.guven.sahra.Serbest.karar(Komut.coz("ekranı oku").tur) == com.guven.sahra.Serbest.Karar.REDDET
+                && com.guven.sahra.Serbest.karar(Komut.coz("bildirimleri oku").tur) == com.guven.sahra.Serbest.Karar.REDDET
+                && com.guven.sahra.Serbest.karar(Komut.coz("notlarımı oku").tur) == com.guven.sahra.Serbest.Karar.REDDET
+                && com.guven.sahra.Serbest.karar(Komut.coz("sesi kıs").tur) == com.guven.sahra.Serbest.Karar.CALISTIR);
+        denetle("banka", com.guven.sahra.Suzgec.okunmaz("com.ziraat.ziraatmobil", "Ziraat Mobil", "a", "b"));
+        denetle("kod", com.guven.sahra.Suzgec.gizliIcerik("Google", "G-482913") && com.guven.sahra.Suzgec.gizliIcerik("X", "Giriş kodunuz 4821")
+                && com.guven.sahra.Suzgec.gizliIcerik("SMS", "Doğrulama: 123456") && com.guven.sahra.Suzgec.gizliIcerik("a", "Your code is 123 456"));
+        denetle("normal", !com.guven.sahra.Suzgec.okunmaz("com.whatsapp", "WhatsApp", "Ayşe", "Akşam 8'de geliyorum"));
+        com.guven.sahra.Hafiza.ekle("a", "b", 1000);
+        denetle("hafiza", com.guven.sahra.Hafiza.al(5, 2000).size() == 1 && com.guven.sahra.Hafiza.al(5, 400000).isEmpty());
+        denetle("konu1", com.guven.sahra.Zaman.hatirlatKonusu("akşam 8'de ilacı hatırlat").equals("ilacı"));
+        denetle("konu2", com.guven.sahra.Zaman.hatirlatKonusu("10 dakika sonra fırını kapatmayı hatırlat").equals("fırını kapatmayı"));
+        denetle("konu3", com.guven.sahra.Zaman.hatirlatKonusu("yarın saat dokuzda toplantıyı bana hatırlatır mısın").equals("toplantıyı"));
+        denetle("yakin1", com.guven.sahra.Zaman.yakinSaat("8 de ilac", 480, 600) == 1200);
+        denetle("yakin2", com.guven.sahra.Zaman.yakinSaat("7 de", 420, 1320) == 420);
+        denetle("yakin3", com.guven.sahra.Zaman.yakinSaat("sabah 8 de", 480, 600) == 480);
+        byte[] wav = com.guven.sahra.Wav.hazirla(new byte[]{1, 2, 3, 4}, "audio/L16;codec=pcm;rate=24000");
+        denetle("wav", wav.length == 48 && wav[0] == 'R' && com.guven.sahra.Wav.hazirla(wav, "audio/wav") == wav);
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }
