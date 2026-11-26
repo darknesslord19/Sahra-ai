@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.View;
@@ -32,8 +33,10 @@ import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.List;
 
 /** Ayar ekranı. Ek kütüphane kullanmadan kart düzeni. */
@@ -49,6 +52,9 @@ public class MainActivity extends Activity {
     private static final int UYARI = 0xFFFBBF24;
     private static final int[] RENK_ORNEK = {0xFFE8ECF4, 0xFF262A34, 0xFF2B7BE0, 0xFF14B0AA, 0xFF2FA84A,
             0xFF7A4CE0, 0xFFEC5599, 0xFFD93630, 0xFFD9A21F};
+
+    private static final int FARKLI_KAYDET = 10;
+    private static final int GERI_YUKLE = 11;
 
     private LinearLayout kok;
     private LinearLayout kart;
@@ -68,6 +74,30 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         ciz();
+    }
+
+    @Override
+    protected void onPause() {
+        Yedek.gerekirseYedekle(this);
+        super.onPause();
+    }
+
+    @Override
+    protected void onActivityResult(int istek, int sonuc, Intent veri) {
+        if (sonuc != RESULT_OK || veri == null || veri.getData() == null) return;
+        try {
+            if (istek == FARKLI_KAYDET) {
+                Yedek.dosyayaYaz(this, veri.getData(), Yedek.json(this));
+                uyar("Yedek kaydedildi.");
+            } else if (istek == GERI_YUKLE) {
+                int sayi = Yedek.geriYukle(this, Yedek.dosyadanOku(this, veri.getData()));
+                yenile();
+                ciz();
+                uyar("Geri yüklendi. Yedekteki komut sayısı: " + sayi);
+            }
+        } catch (IOException | JSONException | RuntimeException e) {
+            uyar("Yedek işlemi yapılamadı. Geçerli bir Sahra JSON dosyası seçin.");
+        }
     }
 
     @Override
@@ -102,10 +132,12 @@ public class MainActivity extends Activity {
         boolean ustte = Settings.canDrawOverlays(this);
         anaDugme(mikrofon && ustte);
         komutKarti(mikrofon && ustte);
+        ozelKarti(mikrofon && ustte);
         izinKarti(mikrofon, ustte);
         sesKarti();
         gorunumKarti();
         genelKarti();
+        yedekKarti();
         yardimKarti();
 
         kaydir.post(new Runnable() {
@@ -334,6 +366,162 @@ public class MainActivity extends Activity {
         for (String[] g : gruplar) {
             ekle(kart, metin(g[0], 13, VURGU), 12, -2);
             ekle(kart, metin(g[1], 14, METIN), 2, -2);
+        }
+    }
+
+    private void ozelKarti(final boolean hazir) {
+        kart("Kendi komutlarım");
+        final List<Ozel> liste = Yedek.komutlar(this);
+        ekle(kart, metin(liste.isEmpty() ? "Henüz komut eklemediniz." : "Düzenlemek ya da çalıştırmak için komuta dokunun.", 12, SOLUK), 4, -2);
+        for (final Ozel o : liste) {
+            LinearLayout satir = new LinearLayout(this);
+            satir.setOrientation(LinearLayout.VERTICAL);
+            satir.setPadding(dp(12), dp(10), dp(12), dp(10));
+            satir.setBackground(basilabilir(sekil(ALAN, 14, 0)));
+            satir.addView(metin("“" + o.cumle + "”", 15, METIN));
+            satir.addView(metin(o.isler.isEmpty() ? "Cevap: " + o.cevap : o.isler.replace("\n", " ; "), 12, SOLUK));
+            satir.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    secenekler(o, hazir);
+                }
+            });
+            ekle(kart, satir, 8, -2);
+        }
+        ekle(kart, dugme("+ Komut ekle", true, new Runnable() {
+            @Override
+            public void run() {
+                komutPenceresi(null);
+            }
+        }), 12, 46);
+    }
+
+    private void secenekler(final Ozel o, final boolean hazir) {
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert).setTitle(o.cumle)
+                .setItems(new String[]{"Çalıştır", "Düzenle", "Sil"}, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int i) {
+                        if (i == 1) {
+                            komutPenceresi(o);
+                        } else if (i == 2) {
+                            komutDegistir(o.cumle, null);
+                        } else if (hazir) {
+                            startForegroundService(new Intent(MainActivity.this, SahraService.class)
+                                    .putExtra(SahraService.KOMUT, o.cumle));
+                        } else {
+                            uyar("Önce mikrofon ve üstte gösterme izinlerini verin.");
+                        }
+                    }
+                }).show();
+    }
+
+    private void komutPenceresi(final Ozel eski) {
+        LinearLayout ic = new LinearLayout(this);
+        ic.setOrientation(LinearLayout.VERTICAL);
+        ic.setPadding(dp(20), dp(8), dp(20), dp(8));
+        final EditText cumle = alan(ic, "Söyleyeceğiniz cümle", "örnek: iş modu", eski == null ? "" : eski.cumle, 1);
+        final EditText isler = alan(ic, "Yapılacaklar (her satıra bir komut)", "sessize al\nWhatsApp aç",
+                eski == null ? "" : eski.isler, 3);
+        final EditText cevap = alan(ic, "Sahra'nın cevabı (isteğe bağlı)", "İş modu hazır hocam",
+                eski == null ? "" : eski.cevap, 1);
+        ScrollView s = new ScrollView(this);
+        s.addView(ic);
+        final AlertDialog d = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setTitle(eski == null ? "Yeni komut" : "Komutu düzenle").setView(s)
+                .setPositiveButton("Kaydet", null).setNegativeButton("Vazgeç", null).create();
+        d.show();
+        // Hata varsa pencere kapanmasın diye düğme sonradan bağlanır
+        d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Ozel yeni = new Ozel(cumle.getText().toString(), isler.getText().toString(), cevap.getText().toString());
+                if (Ozel.anahtar(yeni.cumle).isEmpty()) {
+                    cumle.setError("Bir cümle yazın");
+                    return;
+                }
+                if (yeni.isler.isEmpty() && yeni.cevap.isEmpty()) {
+                    isler.setError("Yapılacak bir iş ya da cevap yazın");
+                    return;
+                }
+                for (String adim : Ozel.adimlar(yeni.isler)) {
+                    if (Komut.coz(adim).tur == Komut.Tur.BILINMIYOR) {
+                        isler.setError("Sahra bu komutu bilmiyor: " + adim);
+                        return;
+                    }
+                }
+                d.dismiss();
+                komutDegistir(eski == null ? null : eski.cumle, yeni);
+            }
+        });
+    }
+
+    /** eskiCumle silinir; yeni null değilse eklenir. Ardından yedeklenir. */
+    private void komutDegistir(String eskiCumle, Ozel yeni) {
+        List<Ozel> liste = Yedek.komutlar(this);
+        int yer = liste.size();
+        for (String silinecek : new String[]{eskiCumle, yeni == null ? null : yeni.cumle}) {
+            Ozel var = silinecek == null ? null : Ozel.bul(liste, silinecek);
+            if (var != null) {
+                yer = Math.min(yer, liste.indexOf(var));
+                liste.remove(var);
+            }
+        }
+        if (yeni != null) liste.add(Math.min(yer, liste.size()), yeni);
+        Yedek.kaydet(this, liste);
+        Yedek.otomatik(this);
+        ciz();
+    }
+
+    private EditText alan(LinearLayout nereye, String etiket, String ipucu, String deger, int satir) {
+        ekle(nereye, metin(etiket, 13, SOLUK), 10, -2);
+        EditText e = kutu(ipucu, deger);
+        e.setPadding(dp(14), dp(10), dp(14), dp(10));
+        if (satir > 1) {
+            e.setSingleLine(false);
+            e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+            e.setMinLines(satir);
+            e.setGravity(Gravity.TOP);
+        }
+        ekle(nereye, e, 6, -2);
+        return e;
+    }
+
+    private void yedekKarti() {
+        kart("Yedekleme (JSON)");
+        String zaman = Ayar.al(this).getString("yedekZamani", "");
+        ekle(kart, metin((zaman.isEmpty() ? "Henüz otomatik yedek alınmadı." : "Son otomatik yedek: " + zaman)
+                + "\nKonum: İndirilenler/Sahra/" + Yedek.DOSYA
+                + "\nKomutlarınız ve ayarlarınız yedeklenir. Dosyayı okuyabilen herkes içindekileri görebilir.", 12, SOLUK), 4, -2);
+        ekle(kart, dugme("Şimdi yedekle", true, new Runnable() {
+            @Override
+            public void run() {
+                boolean oldu = Yedek.otomatik(MainActivity.this);
+                ciz();
+                uyar(oldu ? "Yedek İndirilenler/Sahra klasörüne kaydedildi."
+                        : "Otomatik yedek yapılamadı. \"Farklı kaydet\" düğmesini kullanın.");
+            }
+        }), 10, 46);
+        ekle(kart, dugme("Farklı kaydet", false, new Runnable() {
+            @Override
+            public void run() {
+                dosyaSec(new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json")
+                        .putExtra(Intent.EXTRA_TITLE, Yedek.DOSYA), FARKLI_KAYDET);
+            }
+        }), 8, 44);
+        ekle(kart, dugme("Yedekten geri yükle", false, new Runnable() {
+            @Override
+            public void run() {
+                // Bazı telefonlar .json dosyasının türünü tanımadığı için tüm dosyalar gösterilir
+                dosyaSec(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*"), GERI_YUKLE);
+            }
+        }), 8, 44);
+    }
+
+    private void dosyaSec(Intent i, int istek) {
+        try {
+            startActivityForResult(i.addCategory(Intent.CATEGORY_OPENABLE), istek);
+        } catch (RuntimeException e) {
+            uyar("Telefonda dosya seçici açılamadı.");
         }
     }
 

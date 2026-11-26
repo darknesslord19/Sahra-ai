@@ -14,6 +14,9 @@ Dikkat: testkey herkese açık bir anahtardır, imza APK'nın kimden geldiğini 
 2. Ekranı okuma ve yazma için erişilebilirlik iznini açın.
 3. "Sahra'yı başlat" düğmesine basın, robota dokunup konuşun.
 
+## Kendi komutların ve yedek
+Uygulamadaki "Kendi komutlarım" bölümünden komut ekleyin. Komutlar ve ayarlar İndirilenler/Sahra/sahra-yedek.json dosyasına yedeklenir (Android 10+).
+
 ## Durum
 Komutlar hazır kalıplarla anlaşılır; yapay zekâ bağlantısı henüz yoktur.
 İnternetsiz ses tanıma, telefonun Türkçe çevrimdışı dil desteğine bağlıdır.

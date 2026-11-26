@@ -48,6 +48,12 @@ public class KomutTest {
         if (!String.join(" ", p).equals(uzun) || p.size() < 3) hata++;
         for (String x : p) if (x.length() > 260) hata++;
         if (com.guven.sahra.Sayfa.bol("", 260).size() != 1) hata++;
+        java.util.List<com.guven.sahra.Ozel> ozeller = java.util.Arrays.asList(
+                new com.guven.sahra.Ozel("İş modu", "sessize al\nWhatsApp aç; mesaj yaz geldim", ""));
+        if (com.guven.sahra.Ozel.bul(ozeller, "Sahra, iş modu.") == null) hata++;
+        if (com.guven.sahra.Ozel.bul(ozeller, "iş modunu kapat") != null) hata++;
+        if (com.guven.sahra.Ozel.bul(ozeller, "") != null) hata++;
+        if (com.guven.sahra.Ozel.adimlar(ozeller.get(0).isler).size() != 3) hata++;
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

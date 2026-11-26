@@ -526,9 +526,51 @@ public class SahraService extends Service {
 
     // ---------- Komut ve konuşma ----------
 
+    private final List<Runnable> sirada = new ArrayList<Runnable>();
+
     private void calistir(String cumle) {
+        // Yeni komut gelince önceki özel komutun kalan adımları iptal edilir
+        for (Runnable r : sirada) ana.removeCallbacks(r);
+        sirada.clear();
         duyulan = cumle;
-        Komut k = Komut.coz(cumle);
+        Ozel ozel = Ozel.bul(Yedek.komutlar(this), cumle);
+        if (ozel != null) {
+            ozelCalistir(ozel);
+        } else {
+            tekKomut(Komut.coz(cumle), null);
+        }
+    }
+
+    /** Adımlar sırayla, uygulamaların açılmasına zaman tanıyarak çalışır. */
+    private void ozelCalistir(final Ozel ozel) {
+        List<String> adimlar = Ozel.adimlar(ozel.isler);
+        final List<String> cevaplar = new ArrayList<String>();
+        long bekle = 0;
+        for (final String adim : adimlar) {
+            Runnable r = new Runnable() {
+                @Override
+                public void run() {
+                    tekKomut(Komut.coz(adim), cevaplar);
+                }
+            };
+            sirada.add(r);
+            ana.postDelayed(r, bekle);
+            bekle += 1800;
+        }
+        Runnable son = new Runnable() {
+            @Override
+            public void run() {
+                String soz = ozel.cevap.isEmpty() ? TextUtils.join("\n", cevaplar) : ozel.cevap;
+                soyle(soz.isEmpty() ? "Tamam " + Ayar.hitap(SahraService.this) + "." : soz);
+            }
+        };
+        sirada.add(son);
+        ana.postDelayed(son, Math.max(0, bekle - 1500));
+    }
+
+    /** toplanan null değilse cevap hemen söylenmez, listeye eklenir. */
+    private void tekKomut(Komut k, List<String> toplanan) {
+        String cevap = "Tamam " + Ayar.hitap(this) + ".";
         switch (k.tur) {
             case KAPAN:
                 stopSelf();
@@ -536,18 +578,21 @@ public class SahraService extends Service {
             case BUYU:
             case KUCUL:
                 boyutla(Ayar.boyut(this) + (k.tur == Komut.Tur.BUYU ? 20 : -20));
-                soyle("Tamam " + Ayar.hitap(this) + ".");
-                return;
+                break;
             case RENK:
                 Ayar.al(this).edit().putString("renk", k.metin).apply();
                 durum();
-                soyle("Tamam " + Ayar.hitap(this) + ".");
-                return;
+                break;
             case SES_DEGISTIR:
                 sesDegistir();
                 return;
             default:
-                soyle(new Yurutucu(this).uygula(k));
+                cevap = new Yurutucu(this).uygula(k);
+        }
+        if (toplanan == null) {
+            soyle(cevap);
+        } else {
+            toplanan.add(cevap);
         }
     }
 
