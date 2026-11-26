@@ -43,6 +43,18 @@ public final class Veri {
         return onsDolar / 31.1034768 * dolarTl;
     }
 
+    /** Canlı veri isteyen sorular; ücretsiz Gemini bunları güncel bilemez. */
+    public static boolean guncelSoru(String soru) {
+        return Komut.sade(soru).matches("(.* )?(bugun|bugunku|dun|dunku|yarin|su an|su anki|simdi|guncel|son dakika|bu hafta|mac|maci|maclar|skor|puan durumu|haber|haberler|haberleri|fiyati|fiyatlari|secim sonuclari)( .*)?");
+    }
+
+    /** Seslendirme ve gösterim için biçim işaretlerini temizler. */
+    public static String duzMetin(String s) {
+        return s.replaceAll("(?m)^\\s*#{1,6}\\s*", "").replaceAll("(?m)^\\s*[*-]\\s+", "• ")
+                .replace("**", "").replace("__", "").replace("`", "").replace("*", "")
+                .replaceAll("\n{3,}", "\n\n").trim();
+    }
+
     public static String para(double d) {
         return String.format(new Locale("tr", "TR"), "%,.2f", d);
     }

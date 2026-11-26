@@ -126,13 +126,15 @@ final class BilgiPenceresi {
         t.setLineSpacing(0, 1.15f);
         t.setPadding(0, dp(8), 0, dp(8));
         l.addView(t);
-        l.addView(metin("Kaynak: Vikipedi", 12, 0xFF9AA2B5));
+        l.addView(metin("Kaynak: " + s.kaynak, 12, 0xFF9AA2B5));
         ScrollView k = new ScrollView(c);
         k.addView(l);
         govde.addView(k, new FrameLayout.LayoutParams(-1, -1));
     }
 
     void yaz(String s) {
+        yukleniyor = false;
+        okunacak = s;
         temizle();
         govde.addView(metin(s, 15, 0xFFF2F4F8));
     }

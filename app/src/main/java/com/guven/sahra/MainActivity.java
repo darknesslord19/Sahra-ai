@@ -138,6 +138,7 @@ public class MainActivity extends Activity {
         komutKarti(mikrofon && ustte);
         ozelKarti(mikrofon && ustte);
         izinKarti(mikrofon, ustte);
+        geminiKarti();
         sesKarti();
         gorunumKarti();
         davranisKarti();
@@ -265,6 +266,70 @@ public class MainActivity extends Activity {
             ekle(kart, metin("Ekran kontrolü gri görünürse: Uygulama bilgisi → ⋮ → Kısıtlanmış ayarlara izin ver.", 12, SOLUK), 10, -2);
             ekle(kart, dugme("Uygulama bilgisi", false, ayarAc(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, true)), 8, 44);
         }
+    }
+
+    private void geminiKarti() {
+        kart("Yapay zekâ (Gemini)");
+        ekle(kart, metin("Yalnızca sorularınız için kullanılır; yalnızca soru cümlesi Google'a gönderilir. Ücretsiz kullanımda Google bunları ürün geliştirmede kullanabilir ve insanlar inceleyebilir. Kişisel bilgi ya da şifre sormayın.", 12, SOLUK), 4, -2);
+        String kayitli = Gemini.anahtar(this);
+        ekle(kart, metin(kayitli.isEmpty() ? "Anahtar kayıtlı değil."
+                : "✓ Anahtar kayıtlı (sonu " + kayitli.substring(Math.max(0, kayitli.length() - 4)) + ")", 13,
+                kayitli.isEmpty() ? UYARI : VURGU), 10, -2);
+        final EditText e = kutu(kayitli.isEmpty() ? "Anahtarı buraya yapıştırın" : "Değiştirmek için yeni anahtar", "");
+        e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        ekle(kart, e, 8, 48);
+        ekle(kart, dugme("Anahtarı kaydet", true, new Runnable() {
+            @Override
+            public void run() {
+                String yeni = e.getText().toString().trim();
+                if (!yeni.matches("[A-Za-z0-9._-]{20,512}")) {
+                    uyar("Anahtar eksik ya da hatalı görünüyor. Boşluk olmadan tamamını yapıştırın.");
+                    return;
+                }
+                Gemini.anahtarKaydet(MainActivity.this, yeni);
+                ciz();
+                uyar("Kaydedildi. Şimdi \"Anahtarı dene\" düğmesine basın.");
+            }
+        }), 10, 46);
+        if (kayitli.isEmpty()) return;
+        ekle(kart, dugme("Anahtarı dene", false, new Runnable() {
+            @Override
+            public void run() {
+                anahtarDene();
+            }
+        }), 8, 44);
+        ekle(kart, dugme("Anahtarı sil", false, new Runnable() {
+            @Override
+            public void run() {
+                Gemini.anahtarKaydet(MainActivity.this, "");
+                ciz();
+            }
+        }), 8, 44);
+    }
+
+    private void anahtarDene() {
+        final AlertDialog bekle = new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                .setMessage("Gemini deneniyor…").show();
+        new Thread() {
+            @Override
+            public void run() {
+                String sonuc;
+                try {
+                    sonuc = "✓ Anahtar çalışıyor.\n\n" + Gemini.sor(MainActivity.this, "Merhaba de.");
+                } catch (Gemini.Hata e) {
+                    sonuc = e.getMessage();
+                }
+                final String mesaj = sonuc;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing() || isDestroyed()) return;
+                        bekle.dismiss();
+                        uyar(mesaj);
+                    }
+                });
+            }
+        }.start();
     }
 
     private void sesKarti() {
@@ -521,7 +586,7 @@ public class MainActivity extends Activity {
                 {"Müzik ve ses", "müzik aç · sonraki şarkı · müziği durdur · sessize al · sesi aç · sesi kıs"},
                 {"Mesaj", "mesaj yaz akşam geliyorum · gönder"},
                 {"Ekran", "ekranı oku · Tamam butonuna tıkla · geri · ana ekran · aşağı kaydır"},
-                {"Sorular", "Atatürk kim · yapay zekâ nedir · Ankara hakkında bilgi · maç ne zaman · oku · okumayı durdur · pencereyi kapat"},
+                {"Sorular", "Atatürk kim · sor bana bir fıkra anlat · yapay zekâ nedir · Ankara hakkında bilgi · maç ne zaman · oku · okumayı durdur · pencereyi kapat"},
                 {"Hava ve piyasa", "hava durumu · dolar kaç · altın kaç · güzel söz söyle"},
                 {"Efekt", "kar yağdır · yağmur yağdır · yaprak dök · güneş aç"},
                 {"Robot", "büyü · küçül · rengini mavi yap · sesini değiştir · kalp göz yap · rastgele davran"}};

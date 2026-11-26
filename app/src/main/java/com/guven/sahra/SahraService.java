@@ -770,12 +770,9 @@ public class SahraService extends Service {
                 cevap = new Yurutucu(this).uygula(k);
                 break;
             case SORU:
-                sor(k.metin);
-                return;
             case GOOGLE_SORU:
-                duyulan = "";
-                pencere.google(k.metin);
-                konus(Ayar.hitap(this) + ", Google sonuçlarını gösteriyorum.");
+            case YAPAY_SORU:
+                sor(k);
                 return;
             default:
                 cevap = new Yurutucu(this).uygula(k);
@@ -866,8 +863,11 @@ public class SahraService extends Service {
         konus(metin);
     }
 
-    /** Soruyu arka planda araştırır, cevabı pencerede gösterip özetini okur. */
-    private void sor(final String konu) {
+    /**
+     * Soruyu arka planda cevaplar. Anahtar varsa önce Gemini'ye sorulur; olmazsa
+     * "kim, nedir" soruları Vikipedi'de, diğerleri Google'da açılır.
+     */
+    private void sor(final Komut k) {
         duyulan = "";
         ana.removeCallbacks(yaziGizle);
         yazi.setVisibility(View.GONE);
@@ -875,32 +875,71 @@ public class SahraService extends Service {
             soyle(Ayar.hitap(this) + ", bunu araştırmak için internet gerekiyor.");
             return;
         }
-        final int numara = pencere.yukleniyor(konu);
+        final boolean acikca = k.tur == Komut.Tur.YAPAY_SORU;
+        if (acikca && !Gemini.hazir(this)) {
+            soyle(Ayar.hitap(this) + ", önce Sahra uygulamasından Gemini anahtarınızı kaydedin.");
+            return;
+        }
+        final String soru = acikca ? k.metin : k.cumle;
+        final boolean yapay = Gemini.hazir(this) && (acikca || !Veri.guncelSoru(soru));
+        if (!yapay && k.tur == Komut.Tur.GOOGLE_SORU) {
+            googleGoster(k.metin);
+            return;
+        }
+        final int numara = pencere.yukleniyor(soru);
         new Thread() {
             @Override
             public void run() {
                 Bilgi.Sonuc bulunan = null;
-                try {
-                    bulunan = Bilgi.ara(konu);
-                } catch (IOException | JSONException e) {
-                    // Aşağıda Google sonuçlarına geçilir
+                String sorun = "";
+                if (yapay) {
+                    try {
+                        String cevap = Gemini.sor(SahraService.this, soru);
+                        bulunan = new Bilgi.Sonuc();
+                        bulunan.baslik = soru;
+                        bulunan.metin = cevap;
+                        bulunan.resim = "";
+                        bulunan.kaynak = "Gemini (yapay zekâ, yanlış olabilir)";
+                    } catch (Gemini.Hata e) {
+                        sorun = e.getMessage();
+                    }
+                }
+                if (bulunan == null && k.tur == Komut.Tur.SORU) {
+                    try {
+                        bulunan = Bilgi.ara(k.metin);
+                    } catch (IOException | JSONException e) {
+                        // Aşağıda Google sonuçlarına geçilir
+                    }
                 }
                 final Bilgi.Sonuc s = bulunan;
+                final String hata = sorun;
                 ana.post(new Runnable() {
                     @Override
                     public void run() {
                         if (!calisiyor || !pencere.guncel(numara)) return;
-                        if (s == null) {
-                            pencere.google(konu);
-                            konus(Ayar.hitap(SahraService.this) + ", Google sonuçlarını gösteriyorum.");
-                        } else {
+                        if (s != null) {
                             pencere.goster(s);
-                            konus(Sayfa.bol(s.metin, 350).get(0));
+                            // Yapay zekâ cevabı kısadır, tamamı okunur; ansiklopedi metninin başı okunur
+                            List<String> parcalar = Sayfa.bol(s.metin, 350);
+                            konus(parcalar.get(0));
+                            if (s.kaynak.startsWith("Gemini")) okumaKuyrugu.addAll(parcalar.subList(1, parcalar.size()));
+                        } else if (acikca) {
+                            pencere.yaz(hata);
+                            konus(hata);
+                        } else {
+                            googleGoster(k.metin);
                         }
+                        // Gemini kullanılamadıysa nedeni balonda görünür
+                        if (!hata.isEmpty() && !acikca) goster(hata);
                     }
                 });
             }
         }.start();
+    }
+
+    private void googleGoster(String aranan) {
+        pencere.google(aranan);
+        konus(Ayar.hitap(this) + ", Google sonuçlarını gösteriyorum.");
     }
 
     private final List<String> okumaKuyrugu = new ArrayList<String>();

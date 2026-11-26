@@ -17,6 +17,9 @@ Dikkat: testkey herkese açık bir anahtardır, imza APK'nın kimden geldiğini 
 ## Kendi komutların ve yedek
 Uygulamadaki "Kendi komutlarım" bölümünden komut ekleyin. Komutlar ve ayarlar İndirilenler/Sahra/sahra-yedek.json dosyasına yedeklenir (Android 10+).
 
+## Gemini (isteğe bağlı)
+Sorular için uygulamaya kendi Gemini anahtarınızı girebilirsiniz. Anahtarı koda, depoya ya da APK'ya koymayın.
+
 ## Durum
-Komutlar hazır kalıplarla anlaşılır; yapay zekâ bağlantısı henüz yoktur.
+Komutlar hazır kalıplarla anlaşılır; Gemini yalnızca sorularda kullanılır.
 İnternetsiz ses tanıma, telefonun Türkçe çevrimdışı dil desteğine bağlıdır.

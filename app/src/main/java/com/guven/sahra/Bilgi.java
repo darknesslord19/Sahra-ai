@@ -17,6 +17,7 @@ final class Bilgi {
         String baslik;
         String metin;
         String resim;
+        String kaynak = "Vikipedi";
     }
 
     static final String KIMLIK = "Sahra/0.1 (https://github.com/darknesslord19/Sahra-ai)";

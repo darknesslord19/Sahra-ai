@@ -112,6 +112,19 @@ public class KomutTest {
         if (!com.guven.sahra.Veri.efekt(0, true, 5, 7).equals("gunes")) hata++;
         if (!com.guven.sahra.Veri.efekt(3, true, 5, 10).equals("yaprak")) hata++;
         if (!com.guven.sahra.Veri.efekt(3, false, 5, 1).equals("")) hata++;
+        t("sor bana bir fıkra anlat", "YAPAY_SORU", "bana bir fıkra anlat");
+        t("Sahra, Gemini yumurta nasıl haşlanır", "YAPAY_SORU", "yumurta nasıl haşlanır");
+        if (!Komut.coz("Sahra, Atatürk kimdir").cumle.equals("Atatürk kimdir")) hata++;
+        if (!Komut.coz("yumurta nasıl haşlanır").cumle.equals("yumurta nasıl haşlanır")) hata++;
+        if (!com.guven.sahra.Veri.guncelSoru("maç ne zaman")) hata++;
+        if (!com.guven.sahra.Veri.guncelSoru("bugün hangi gün tatil")) hata++;
+        if (com.guven.sahra.Veri.guncelSoru("yumurta nasıl haşlanır")) hata++;
+        if (com.guven.sahra.Veri.guncelSoru("su nasıl kaynar")) hata++;
+        String duz = com.guven.sahra.Veri.duzMetin("## Başlık\n**Kalın** metin\n* madde");
+        if (!duz.equals("Başlık\nKalın metin\n• madde")) {
+            hata++;
+            System.out.println("HATA duz: " + duz);
+        }
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

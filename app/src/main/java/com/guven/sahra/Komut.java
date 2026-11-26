@@ -11,11 +11,13 @@ public final class Komut {
         MUZIK_CAL, MUZIK_ARA, MUZIK_DURDUR, SONRAKI, ONCEKI,
         YOUTUBE, WEB_ARA, UYGULAMA_AC, YAZ, GONDER, EKRAN_OKU, TIKLA,
         GERI, ANA_EKRAN, SON_UYGULAMALAR, BILDIRIMLER, ASAGI, YUKARI,
-        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, OKUMA_DUR, HAVA, KUR, EFEKT, GUZEL_SOZ, KAPAN, BILINMIYOR
+        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, OKUMA_DUR, HAVA, KUR, EFEKT, GUZEL_SOZ, YAPAY_SORU, KAPAN, BILINMIYOR
     }
 
     public final Tur tur;
     public final String metin;
+    /** Komutun söylendiği hâliyle tamamı (baştaki "Sahra" olmadan). */
+    public String cumle = "";
 
     private Komut(Tur tur, String metin) {
         this.tur = tur;
@@ -52,6 +54,14 @@ public final class Komut {
     }
 
     public static Komut coz(String girdi) {
+        Komut k = ayristir(girdi);
+        String c = girdi == null ? "" : girdi.trim().replaceAll("\\s+", " ");
+        if (sade(c).matches("(hey |tamam )?sahra\\b[ ,]+.*")) c = c.replaceFirst("^(?i)(\\S+ )?sahra[ ,]+", "");
+        k.cumle = c;
+        return k;
+    }
+
+    private static Komut ayristir(String girdi) {
         String ham = girdi == null ? "" : girdi.trim().replaceAll("\\s+", " ").replaceAll("[.!?]+$", "");
         String s = sade(ham);
 
@@ -63,6 +73,10 @@ public final class Komut {
             if (s.isEmpty()) return k(Tur.SELAM);
         }
         Matcher m;
+
+        // Açıkça yapay zekâya sorulanlar: "sor ...", "Gemini ..."
+        m = Pattern.compile("^(?:geminiye sor|gemini ye sor|yapay zekaya sor|gemini|sor)[ :,]+(.+)$").matcher(s);
+        if (m.find()) return parca(Tur.YAPAY_SORU, ham, m);
 
         // Yazdırma en önde: yazılacak metnin içindeki sözcükler komut sayılmaz
         m = Pattern.compile("^(?:mesaj yaz|mesaja yaz|sunu yaz|yaz)[ :,]+(.+)$").matcher(s);
