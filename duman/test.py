@@ -48,31 +48,6 @@ for i in ['RECORD_AUDIO', 'POST_NOTIFICATIONS', 'READ_CONTACTS', 'CALL_PHONE', '
     sh(f'pm grant {P} android.permission.{i}')
 sh(f'appops set {P} SYSTEM_ALERT_WINDOW allow')
 ac(); time.sleep(5); ekran('00-ana'); cokme('açılış')
-bolumler = ['Yazılı komut', 'Kendi komutlarım', 'İzinler', 'Arka planda kalma', 'Yapay zekâ (Gemini)', 'Serbest cümle anlama', 'Sohbet hafızası',
-    '"Sahra" uyandırma', "Sahra'nın sesi", 'Doğal çevrimiçi ses', 'Alarm ve hatırlatıcı', 'Arama', 'Hızlı kontroller', 'Sabah özeti', 'Bildirim okuma',
-    'Notlar ve çeviri', 'Araba modu', 'Robot görünümü', 'Robot davranışı', 'Boştayken gözlerde yazı', 'Hava efektleri', 'Genel', 'Yedekleme (JSON)', 'Komutlar']
-acilan = 0
-for i, b in enumerate(bolumler):
-    n = kaydirip_bul(b)
-    if n is None:
-        yaz('bulunamadı', b); ac(); basa(); continue
-    dokun(n)
-    kapat = bul('Kapat')
-    if cokme(b): ac(); continue
-    ekran(f'{i+1:02d}')
-    if kapat is not None:
-        acilan += 1; sh('input keyevent 4'); time.sleep(1.2)
-    else:
-        yaz('panel açılmadı', b)
-yaz('açılan panel', acilan, '/', len(bolumler))
-
-basa(); n = bul('Yazılı komut')
-if n is not None:
-    dokun(n); k = bul('Kapat')
-    if k is not None:
-        y = merkez(k)[1]; sh(f'input swipe 300 {y} 300 {y+800} 300'); time.sleep(1.5)
-        yaz('sürükleyerek kapandı', bul('Kapat') is None)
-
 basa(); n = bul("Sahra'yı başlat")
 if n is not None: dokun(n)
 time.sleep(8); cokme('başlatma'); ekran('30-calisiyor')
@@ -92,9 +67,17 @@ def komut(c, ad):
     on = re.findall(r'(?:topResumedActivity|ResumedActivity).*? (\S+/\S+)', sh('dumpsys activity activities'))
     yaz('komut', c, '| öndeki:', on[0] if on else '?', '| çökme:', cokme(c))
     sh('input keyevent 4'); time.sleep(1)
-for j, c in enumerate(['feneri ac', '10 dakika say', '7 ye alarm kur', 'not al sut alinacak', 'notlarimi oku', 'gunaydin', 'bildirimleri oku', 'parlakligi artir', 'annemi ara', 'wifi ac', 'araba modu']):
+adb('logcat', '-c')
+for j, c in enumerate(['10 dakika say', '7 ye alarm kur', 'feneri ac']):
     komut(c, f'{j:02d}')
-yaz('kayıtlı not', 'sut alinacak' in sh(f'run-as {P} cat shared_prefs/notlar.xml'))
+    time.sleep(3)
+    for l in adb('logcat', '-d').splitlines():
+        if re.search(r'SET_ALARM|SET_TIMER|[Tt]orch', l) and 'SONUC' not in l: yaz('iz', c, '::', l[31:250])
+    adb('logcat', '-c')
+yaz('fener durumu', [l.strip() for l in sh('dumpsys media.camera').splitlines() if 'orch' in l][-4:])
+yaz('alarm kaydı', [l.strip()[:160] for l in sh('dumpsys alarm').splitlines() if 'deskclock' in l.lower()][:5])
+# araba modu açık kalmasın diye uygulama yeniden başlatılır
+sh(f'am force-stop {P}')
 sh(f'am start -n {P}/.MainActivity'); time.sleep(2)
 
 ac(); basa(); n = kaydirip_bul('"Sahra" uyandırma')
@@ -110,12 +93,20 @@ if n is not None:
         yaz('model yüklü', bul('Model yüklü.') is not None); ekran('50-model')
         s = bul('Adımı telefonda tanı', False)
         if s is not None:
-            dokun(s); time.sleep(20); ekran('51-uyandirma')
+            adb('logcat', '-c')
+            dokun(bul('Adımı telefonda tanı', False) or s); time.sleep(5)
+            yaz('anahtar', (bul('Adımı telefonda tanı', False).get('checked') if bul('Adımı telefonda tanı', False) is not None else '?'))
+            sh('input keyevent 4'); time.sleep(1); basa()
+            b2 = bul("Sahra'yı başlat")
+            if b2 is not None: dokun(b2)
+            time.sleep(30); ekran('51-uyandirma')
             yaz('uyandırma açıldı, çökme:', cokme('uyandırma'))
         sh('input keyevent 4'); sh('input keyevent 3'); time.sleep(15); ekran('52-sonra'); cokme('uyandırma sonrası')
     else:
         yaz('indir düğmesi yok')
+yaz('mikrofon', [l.strip()[:200] for l in sh('dumpsys audio').splitlines() if P in l and ('rec' in l.lower())][-4:])
+yaz('hizmet', 'SahraService' in sh(f'dumpsys activity services {P}'))
 yaz('süreç yaşıyor', bool(sh(f'pidof {P}').strip()))
 for l in adb('logcat', '-d').splitlines():
-    if re.search(r'UnsatisfiedLink|VoskAPI|Background activity start|AudioRecord.*(start|sahra)', l): yaz('günlük', l[:220])
+    if re.search(r'UnsatisfiedLink|VoskAPI|Background activity start|AudioRecord|UyandirmaMotoru', l): yaz('günlük', l[:220])
 cokme('son')
