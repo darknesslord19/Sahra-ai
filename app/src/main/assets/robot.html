@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:transparent}
+#bot{position:absolute;left:11%;top:11%;width:78%;height:78%;animation:bob 4.6s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4%)}}
+.sphere{position:absolute;inset:0;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.35),inset 0 -4px 8px rgba(60,60,80,.3);background:radial-gradient(circle at 34% 28%,#fff 0%,#f1f4f9 38%,#d3d9e4 78%,#b8c0cf 100%)}
+[data-color=siyah] .sphere{background:radial-gradient(circle at 34% 28%,#9aa2b2,#4a505e 38%,#262a34 78%,#12141a)}
+[data-color=mavi] .sphere{background:radial-gradient(circle at 34% 28%,#e6f4ff,#6bb8ff 38%,#2b7be0 78%,#1c4f9c)}
+[data-color=turkuaz] .sphere{background:radial-gradient(circle at 34% 28%,#e4fffd,#5ee6dc 38%,#14b0aa 78%,#0b6f70)}
+[data-color=yesil] .sphere{background:radial-gradient(circle at 34% 28%,#ecffe9,#7edc7a 38%,#2fa84a 78%,#1b6a31)}
+[data-color=mor] .sphere{background:radial-gradient(circle at 34% 28%,#f3eaff,#b28cff 38%,#7a4ce0 78%,#4a2a94)}
+[data-color=pembe] .sphere{background:radial-gradient(circle at 34% 28%,#fff0f7,#ff9cc8 38%,#ec5599 78%,#a92c66)}
+[data-color=kirmizi] .sphere{background:radial-gradient(circle at 34% 28%,#ffece8,#ff7a6b 38%,#d93630 78%,#8c1c1c)}
+[data-color=altin] .sphere{background:radial-gradient(circle at 34% 28%,#fffbe3,#ffd96a 38%,#d9a21f 78%,#8f6610)}
+.visor{position:absolute;left:7%;right:7%;top:21%;height:58%;border-radius:30%/44%;background:#07080d;border:2px solid #34d399;box-shadow:0 0 6px #34d399;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:20%}
+.eye{width:11%;height:32%;border-radius:50%;background:#c9ffe6;box-shadow:0 0 7px #6ef0be;transition:height .2s}
+.blink .eye{height:3%}
+[data-state=active] .visor{animation:rain 1.8s linear infinite}
+@keyframes rain{0%,100%{border-color:#22d3ee;box-shadow:0 0 9px #22d3ee}33%{border-color:#8b5cf6;box-shadow:0 0 9px #8b5cf6}66%{border-color:#ec4899;box-shadow:0 0 9px #ec4899}}
+[data-state=active] .eye{background:#eaf6ff;box-shadow:0 0 7px #8fd8ff;animation:talk .5s ease-in-out infinite alternate}
+@keyframes talk{to{height:45%}}
+</style></head>
+<body><div id="bot" data-state="idle" data-color="beyaz"><div class="sphere"></div><div class="visor"><div class="eye"></div><div class="eye"></div></div></div>
+<script>
+var b=document.getElementById('bot');
+setInterval(function(){b.classList.add('blink');setTimeout(function(){b.classList.remove('blink')},140)},3500);
+function robot(state,color){b.setAttribute('data-state',state);b.setAttribute('data-color',color)}
+</script></body></html>
