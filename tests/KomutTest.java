@@ -93,6 +93,25 @@ public class KomutTest {
                 System.out.println("HATA uyanmamalıydı: " + yabanci);
             }
         }
+        t("hava durumu", "HAVA", "");
+        t("hava nasıl", "HAVA", "");
+        t("Chrome'da hava durumu ara", "WEB_ARA", "hava durumu");
+        t("dolar kaç", "KUR", "");
+        t("altın ne kadar", "KUR", "");
+        t("döviz kurları", "KUR", "");
+        t("güzel bir söz söyle", "GUZEL_SOZ", "");
+        t("kar yağdır", "EFEKT", "kar");
+        t("yağmur yağdır", "EFEKT", "yagmur");
+        t("yaprak dök", "EFEKT", "yaprak");
+        t("güneş aç", "EFEKT", "gunes");
+        String xml = "<Currency Kod=\"USD\" CurrencyCode=\"USD\"><ForexBuying>41.1</ForexBuying><ForexSelling>41.25</ForexSelling></Currency>";
+        if (com.guven.sahra.Veri.kur(xml, "USD") != 41.25 || com.guven.sahra.Veri.kur(xml, "EUR") != 0) hata++;
+        if (Math.abs(com.guven.sahra.Veri.gramAltin(3110.34768, 40) - 4000) > 0.001) hata++;
+        if (!com.guven.sahra.Veri.efekt(73, true, 0, 1).equals("kar")) hata++;
+        if (!com.guven.sahra.Veri.efekt(63, true, 0, 10).equals("yagmur")) hata++;
+        if (!com.guven.sahra.Veri.efekt(0, true, 5, 7).equals("gunes")) hata++;
+        if (!com.guven.sahra.Veri.efekt(3, true, 5, 10).equals("yaprak")) hata++;
+        if (!com.guven.sahra.Veri.efekt(3, false, 5, 1).equals("")) hata++;
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

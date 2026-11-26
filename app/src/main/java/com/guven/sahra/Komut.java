@@ -11,7 +11,7 @@ public final class Komut {
         MUZIK_CAL, MUZIK_ARA, MUZIK_DURDUR, SONRAKI, ONCEKI,
         YOUTUBE, WEB_ARA, UYGULAMA_AC, YAZ, GONDER, EKRAN_OKU, TIKLA,
         GERI, ANA_EKRAN, SON_UYGULAMALAR, BILDIRIMLER, ASAGI, YUKARI,
-        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, OKUMA_DUR, KAPAN, BILINMIYOR
+        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, OKUMA_DUR, HAVA, KUR, EFEKT, GUZEL_SOZ, KAPAN, BILINMIYOR
     }
 
     public final Tur tur;
@@ -82,6 +82,14 @@ public final class Komut {
         if (s.matches(".*sesi (artir|yukselt|biraz ac)$")) return k(Tur.SES_ARTIR);
         if (s.matches(".*sesi (azalt|kis|dusur)$")) return k(Tur.SES_AZALT);
 
+        if (s.matches("(bugun )?hava( durumu)?( nasil| ne| kac derece| soyle)?|(disarisi )?kac derece")) return k(Tur.HAVA);
+        if (s.matches("(bugun )?(dolar|euro|avro|altin|gram altin|doviz|kurlar|doviz kurlari)( ne kadar| kac( tl| lira)?| durumu| kuru| fiyati| soyle)?")) return k(Tur.KUR);
+        if (s.matches("(bana )?(guzel )?(bir )?(guzel soz|soz soyle|atasozu)( soyle)?")) return k(Tur.GUZEL_SOZ);
+        if (s.matches("kar yagdir")) return new Komut(Tur.EFEKT, "kar");
+        if (s.matches("yagmur yagdir")) return new Komut(Tur.EFEKT, "yagmur");
+        if (s.matches("yaprak(lari)? (dok|dokul|dokur|yagdir)")) return new Komut(Tur.EFEKT, "yaprak");
+        if (s.matches("gunes (ac|actir|cikar)")) return new Komut(Tur.EFEKT, "gunes");
+        if (s.matches("efekti (kapat|durdur)")) return new Komut(Tur.EFEKT, "");
         if (s.matches("okumayi (durdur|kes|birak)|okuma|dur|yeter")) return k(Tur.OKUMA_DUR);
         if (s.matches("(pencereyi|bilgiyi|popup ?i?) kapat|kapat")) return k(Tur.PENCERE_KAPAT);
         for (String[] d : Davranis.LISTE) {

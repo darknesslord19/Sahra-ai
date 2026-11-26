@@ -141,6 +141,8 @@ public class MainActivity extends Activity {
         sesKarti();
         gorunumKarti();
         davranisKarti();
+        panoKarti();
+        efektKarti();
         genelKarti();
         yedekKarti();
         yardimKarti();
@@ -239,7 +241,7 @@ public class MainActivity extends Activity {
         ekle(kart, satir, 10, -2);
 
         anahtar("Sürekli dinleme", "Yalnızca \"Sahra\" ile başlayan cümleye tepki verir. Sadece \"Sahra\" derseniz komutunuzu bekler. Adınızı ayırt etmek için mikrofon açık kalır ve duyulan ses telefonun tanıma hizmetine gidebilir. Pili daha çok harcar, bazı telefonlarda bip sesi çıkar.",
-                "surekli");
+                "surekli", false);
     }
 
     private void izinKarti(boolean mikrofon, boolean ustte) {
@@ -356,6 +358,123 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void panoKarti() {
+        kart("Boştayken gözlerde yazı");
+        anahtar("Kayan yazılar", "Sahra beklerken aşağıda açık olanları sırayla gösterir.", "yaziAcik", true);
+        anahtar("Hava durumu", "Kaynak: Open-Meteo.com", "havaAcik", true);
+        String sehir = Ayar.al(this).getString("sehir", "");
+        ekle(kart, dugme(sehir.isEmpty() ? "Şehir seç" : "Şehir:  " + sehir, sehir.isEmpty(), new Runnable() {
+            @Override
+            public void run() {
+                sehirPenceresi();
+            }
+        }), 8, 46);
+        anahtar("Güzel sözler", "Aşağıya kendi sözlerinizi yazarsanız yalnızca onlar gösterilir.", "sozAcik", true);
+        EditText sozler = kutu("Her satıra bir söz", Ayar.al(this).getString("kendiSozler", ""));
+        sozler.setSingleLine(false);
+        sozler.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        sozler.setMinLines(2);
+        sozler.setMaxLines(6);
+        sozler.setGravity(Gravity.TOP);
+        sozler.setPadding(dp(14), dp(10), dp(14), dp(10));
+        izle(sozler, new Yazildi() {
+            @Override
+            public void oldu(String s) {
+                Ayar.al(MainActivity.this).edit().putString("kendiSozler", s).apply();
+            }
+        });
+        ekle(kart, sozler, 8, -2);
+        anahtar("Dolar, euro, altın",
+                "Döviz: TCMB gösterge satış kuru. Altın: uluslararası ons fiyatından hesaplanır; kuyumcu fiyatı farklıdır.",
+                "kurAcik", true);
+    }
+
+    private void efektKarti() {
+        kart("Hava efektleri");
+        anahtar("Ekranda hava efekti", "Seçtiğiniz şehrin havasına göre ara sıra kar, yağmur, yaprak ya da güneş oynar. Dokunuşlarınızı engellemez.",
+                "efektAcik", true);
+        kaydirici("Kaç dakikada bir", "efektDakika", 1, 30, 5, " dk", SahraService.YENILE);
+        String[][] denemeler = {{"❄ Kar", "kar"}, {"🌧 Yağmur", "yagmur"}, {"🍂 Yaprak", "yaprak"}, {"☀ Güneş", "gunes"}};
+        LinearLayout satir = null;
+        for (int i = 0; i < denemeler.length; i++) {
+            if (i % 2 == 0) {
+                satir = new LinearLayout(this);
+                ekle(kart, satir, 8, -2);
+            }
+            final String tur = denemeler[i][1];
+            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(0, dp(44), 1f);
+            l.leftMargin = dp(3);
+            l.rightMargin = dp(3);
+            satir.addView(dugme(denemeler[i][0], false, new Runnable() {
+                @Override
+                public void run() {
+                    if (SahraService.calisiyor) {
+                        startForegroundService(new Intent(MainActivity.this, SahraService.class)
+                                .putExtra(SahraService.EFEKT_DENE, tur));
+                    } else {
+                        uyar("Efekti denemek için önce Sahra'yı başlatın.");
+                    }
+                }
+            }), l);
+        }
+    }
+
+    private void sehirPenceresi() {
+        final EditText e = kutu("örnek: Ankara", "");
+        LinearLayout ic = new LinearLayout(this);
+        ic.setPadding(dp(20), dp(12), dp(20), dp(4));
+        ic.addView(e, new LinearLayout.LayoutParams(-1, dp(48)));
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert).setTitle("Şehir ara").setView(ic)
+                .setNegativeButton("Vazgeç", null)
+                .setPositiveButton("Ara", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int i) {
+                        sehirAra(e.getText().toString().trim());
+                    }
+                }).show();
+    }
+
+    private void sehirAra(final String aranan) {
+        if (aranan.length() < 2) return;
+        new Thread() {
+            @Override
+            public void run() {
+                List<String[]> bulunan = null;
+                try {
+                    bulunan = Pano.sehirAra(aranan);
+                } catch (IOException | JSONException e) {
+                    // Aşağıda bildirilir
+                }
+                final List<String[]> sonuc = bulunan;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        sehirListesi(sonuc);
+                    }
+                });
+            }
+        }.start();
+    }
+
+    private void sehirListesi(final List<String[]> sonuc) {
+        if (isFinishing() || isDestroyed()) return;
+        if (sonuc == null || sonuc.isEmpty()) {
+            uyar(sonuc == null ? "Arama yapılamadı. İnterneti kontrol edin." : "Şehir bulunamadı.");
+            return;
+        }
+        String[] adlar = new String[sonuc.size()];
+        for (int i = 0; i < adlar.length; i++) adlar[i] = sonuc.get(i)[0];
+        new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert).setTitle("Şehrinizi seçin")
+                .setItems(adlar, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int i) {
+                        Pano.sehirSec(MainActivity.this, sonuc.get(i));
+                        yenile();
+                        ciz();
+                    }
+                }).show();
+    }
+
     private void genelKarti() {
         kart("Genel");
         ekle(kart, metin("Size nasıl hitap etsin?", 13, SOLUK), 6, -2);
@@ -403,6 +522,8 @@ public class MainActivity extends Activity {
                 {"Mesaj", "mesaj yaz akşam geliyorum · gönder"},
                 {"Ekran", "ekranı oku · Tamam butonuna tıkla · geri · ana ekran · aşağı kaydır"},
                 {"Sorular", "Atatürk kim · yapay zekâ nedir · Ankara hakkında bilgi · maç ne zaman · oku · okumayı durdur · pencereyi kapat"},
+                {"Hava ve piyasa", "hava durumu · dolar kaç · altın kaç · güzel söz söyle"},
+                {"Efekt", "kar yağdır · yağmur yağdır · yaprak dök · güneş aç"},
                 {"Robot", "büyü · küçül · rengini mavi yap · sesini değiştir · kalp göz yap · rastgele davran"}};
         for (String[] g : gruplar) {
             ekle(kart, metin(g[0], 13, VURGU), 12, -2);
@@ -638,12 +759,12 @@ public class MainActivity extends Activity {
         ekle(kart, satir, 8, -2);
     }
 
-    private void anahtar(String ad, String aciklama, final String anahtarAdi) {
+    private void anahtar(String ad, String aciklama, final String anahtarAdi, boolean ilk) {
         Switch s = new Switch(this);
         s.setText(ad);
         s.setTextSize(15);
         s.setTextColor(METIN);
-        s.setChecked(Ayar.al(this).getBoolean(anahtarAdi, false));
+        s.setChecked(Ayar.al(this).getBoolean(anahtarAdi, ilk));
         int[][] durumlar = {{android.R.attr.state_checked}, {}};
         s.setThumbTintList(new ColorStateList(durumlar, new int[]{VURGU, 0xFFB8BFCE}));
         s.setTrackTintList(new ColorStateList(durumlar, new int[]{0x8834D399, 0x55B8BFCE}));

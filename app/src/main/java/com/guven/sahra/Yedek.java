@@ -25,8 +25,11 @@ import java.util.Locale;
 /** Kendi komutları ve ayarları saklar; depolamaya JSON olarak yedekler. */
 final class Yedek {
     static final String DOSYA = "sahra-yedek.json";
-    private static final String[] YAZI_AYARLARI = {"hitap", "renk", "muzik", "ses", "davranis"};
-    private static final String[] SAYI_AYARLARI = {"boyut", "hiz", "ton"};
+    private static final String[] YAZI_AYARLARI = {"hitap", "renk", "muzik", "ses", "davranis",
+            "sehir", "enlem", "boylam", "kendiSozler"};
+    private static final String[] SAYI_AYARLARI = {"boyut", "hiz", "ton", "efektDakika"};
+
+    private static final String[] ACMA_AYARLARI = {"surekli", "yaziAcik", "havaAcik", "sozAcik", "kurAcik", "efektAcik"};
 
     // ---------- Komutlar ----------
 
@@ -72,7 +75,7 @@ final class Yedek {
             JSONObject ayarlar = new JSONObject();
             for (String a : YAZI_AYARLARI) if (p.contains(a)) ayarlar.put(a, p.getString(a, ""));
             for (String a : SAYI_AYARLARI) if (p.contains(a)) ayarlar.put(a, p.getInt(a, 0));
-            if (p.contains("surekli")) ayarlar.put("surekli", p.getBoolean("surekli", false));
+            for (String a : ACMA_AYARLARI) if (p.contains(a)) ayarlar.put(a, p.getBoolean(a, false));
             return new JSONObject().put("uygulama", "sahra").put("surum", 1)
                     .put("komutlar", yaz(komutlar(c))).put("ayarlar", ayarlar).toString(2);
         } catch (JSONException e) {
@@ -99,7 +102,9 @@ final class Yedek {
             if (a.has("boyut")) e.putInt("boyut", sinirla(a.optInt("boyut", 92), 46, 184));
             if (a.has("hiz")) e.putInt("hiz", sinirla(a.optInt("hiz", 100), 70, 140));
             if (a.has("ton")) e.putInt("ton", sinirla(a.optInt("ton", 100), 70, 140));
-            if (a.has("surekli")) e.putBoolean("surekli", a.optBoolean("surekli"));
+            for (String ad : ACMA_AYARLARI) if (a.has(ad)) e.putBoolean(ad, a.optBoolean(ad));
+            if (a.has("efektDakika")) e.putInt("efektDakika", sinirla(a.optInt("efektDakika", 5), 1, 30));
+            e.remove("havaZamani");
             e.apply();
         }
         return gelen.size();

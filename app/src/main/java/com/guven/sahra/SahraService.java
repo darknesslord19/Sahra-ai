@@ -21,6 +21,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -52,6 +53,7 @@ public class SahraService extends Service {
     static final String YENILE = "yenile";
     static final String DURDUR = "durdur";
     static final String SES_DENE = "ses_dene";
+    static final String EFEKT_DENE = "efekt_dene";
     static final String SES_SIRADAKI = "ses_siradaki";
     static boolean calisiyor;
 
@@ -62,6 +64,118 @@ public class SahraService extends Service {
     private TextView yazi;
     private BalonCizim balonCizim;
     private BilgiPenceresi pencere;
+    private Efekt efekt;
+    private int yaziSirasi;
+    private long sonEfekt = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
+    private boolean yenileniyor;
+
+    /** Boştayken sıradaki bilgiyi robotun gözlerinde kaydırır. */
+    private final Runnable panoTuru = new Runnable() {
+        @Override
+        public void run() {
+            ana.postDelayed(this, 14000);
+            if (!bosta()) return;
+            veriYenile();
+            if (!Pano.acik(SahraService.this, "yaziAcik")) return;
+            List<String> l = Pano.yazilar(SahraService.this);
+            if (!l.isEmpty()) {
+                String s = l.get(yaziSirasi++ % l.size());
+                web.evaluateJavascript("window.robotYazi&&robotYazi(" + JSONObject.quote(s) + ")", null);
+            }
+        }
+    };
+
+    /** Belirlenen aralıkla havaya uyan ekran efektini oynatır. */
+    private final Runnable efektTuru = new Runnable() {
+        @Override
+        public void run() {
+            ana.postDelayed(this, 30000);
+            long aralik = Ayar.al(SahraService.this).getInt("efektDakika", 5) * 60000L;
+            if (!bosta() || !Pano.acik(SahraService.this, "efektAcik") || pencere.acik()
+                    || System.currentTimeMillis() - sonEfekt < aralik) return;
+            String tur = Pano.havaEfekti(SahraService.this);
+            if (!tur.isEmpty()) efektOynat(tur);
+        }
+    };
+
+    private final Runnable efektBitir = new Runnable() {
+        @Override
+        public void run() {
+            efektKaldir();
+        }
+    };
+
+    private boolean bosta() {
+        return !konusuyor && !(dinliyor && (elleDinleme || uyandi))
+                && getSystemService(PowerManager.class).isInteractive();
+    }
+
+    private void veriYenile() {
+        if (yenileniyor || !cevrimici()) return;
+        yenileniyor = true;
+        new Thread() {
+            @Override
+            public void run() {
+                Pano.yenile(SahraService.this);
+                ana.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        yenileniyor = false;
+                    }
+                });
+            }
+        }.start();
+    }
+
+    private void efektOynat(String tur) {
+        efektKaldir();
+        if (tur.isEmpty()) return;
+        sonEfekt = System.currentTimeMillis();
+        efekt = new Efekt(this, tur);
+        // Dokunuşlar alttaki uygulamaya geçer; Android bunun için en çok %80 görünürlüğe izin verir
+        WindowManager.LayoutParams p = pencereAyari(-1, -1, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
+        p.alpha = 0.8f;
+        pencereler.addView(efekt, p);
+        String ifade = "kar".equals(tur) ? "wow" : "yagmur".equals(tur) ? "sad" : "gunes".equals(tur) ? "cool" : "happy";
+        web.evaluateJavascript("window.oyna&&oyna(" + JSONObject.quote(ifade) + ")", null);
+        ana.postDelayed(efektBitir, Efekt.SURE + 100);
+    }
+
+    private void efektKaldir() {
+        ana.removeCallbacks(efektBitir);
+        if (efekt != null) {
+            pencereler.removeView(efekt);
+            efekt = null;
+        }
+    }
+
+    /** İstenen veri eskiyse önce indirir, sonra cevaplar. */
+    private void veriSoyle(final boolean havaMi) {
+        final String h = Ayar.hitap(this);
+        if (havaMi && !Pano.sehirVar(this)) {
+            soyle(h + ", önce Sahra uygulamasından şehir seçin.");
+            return;
+        }
+        final String istek = duyulan;
+        new Thread() {
+            @Override
+            public void run() {
+                Pano.yenile(SahraService.this);
+                ana.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!calisiyor) return;
+                        String veri = havaMi ? Pano.hava(SahraService.this) : Pano.kurlar(SahraService.this);
+                        duyulan = istek;
+                        soyle(veri.isEmpty() ? h + ", bilgiyi şu an alamadım. İnterneti kontrol edin."
+                                : h + ".\n" + veri.replace("≈", "yaklaşık"));
+                    }
+                });
+            }
+        }.start();
+        duyulan = "";
+    }
     private int deneme;
     private String sonSoz = "";
     private boolean yerelSes;
@@ -131,14 +245,20 @@ public class SahraService extends Service {
             robotKur();
             konusmaKur();
             soyle("Merhaba " + Ayar.hitap(this) + ", emirlerinizi yerine getiriyorum.");
+            veriYenile();
+            ana.postDelayed(panoTuru, 8000);
+            ana.postDelayed(efektTuru, 20000);
         }
         if (intent != null && intent.hasExtra(KOMUT)) {
             calistir(intent.getStringExtra(KOMUT));
         }
         if (SES_SIRADAKI.equals(eylem)) sesDegistir();
+        if (intent != null && intent.hasExtra(EFEKT_DENE)) efektOynat(intent.getStringExtra(EFEKT_DENE));
         if (SES_DENE.equals(eylem)) soyle("Merhaba " + Ayar.hitap(this) + ", sesim şimdi böyle. Nasıl buldunuz?");
         if (YENILE.equals(eylem)) {
             boyutla(Ayar.boyut(this));
+            veriYenile();
+            if (!Pano.acik(this, "efektAcik")) efektKaldir();
             if (surekli()) {
                 ana.postDelayed(yenidenDinle, 500);
             } else if (!elleDinleme) {
@@ -155,6 +275,7 @@ public class SahraService extends Service {
         if (tanima != null) tanima.destroy();
         if (konusma != null) konusma.shutdown();
         if (pencere != null) pencere.kapat();
+        if (pencereler != null) efektKaldir();
         if (balon != null) {
             pencereler.removeView(balon);
             pencereler.removeView(yazi);
@@ -622,6 +743,16 @@ public class SahraService extends Service {
                 break;
             case PENCERE_KAPAT:
                 pencere.kapat();
+                break;
+            case HAVA:
+            case KUR:
+                veriSoyle(k.tur == Komut.Tur.HAVA);
+                return;
+            case EFEKT:
+                efektOynat(k.metin);
+                break;
+            case GUZEL_SOZ:
+                cevap = Ayar.hitap(this) + ". " + Pano.soz(this);
                 break;
             case OKUMA_DUR:
                 sustur();
