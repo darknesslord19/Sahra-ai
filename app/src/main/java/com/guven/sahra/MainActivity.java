@@ -60,6 +60,7 @@ public class MainActivity extends Activity {
     private LinearLayout kart;
     private ScrollView kaydir;
     private WebView onizleme;
+    private WebView davranisOnizleme;
     private String yazilanKomut = "";
 
     @Override
@@ -103,6 +104,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         if (onizleme != null) onizleme.destroy();
+        if (davranisOnizleme != null) davranisOnizleme.destroy();
         super.onDestroy();
     }
 
@@ -113,9 +115,11 @@ public class MainActivity extends Activity {
 
     private void ciz() {
         final int konum = kaydir == null ? 0 : kaydir.getScrollY();
-        if (onizleme != null) {
-            ((LinearLayout) onizleme.getParent()).removeView(onizleme);
-            onizleme.destroy();
+        for (WebView eski : new WebView[]{onizleme, davranisOnizleme}) {
+            if (eski != null) {
+                ((LinearLayout) eski.getParent()).removeView(eski);
+                eski.destroy();
+            }
         }
         kok = new LinearLayout(this);
         kok.setOrientation(LinearLayout.VERTICAL);
@@ -136,6 +140,7 @@ public class MainActivity extends Activity {
         izinKarti(mikrofon, ustte);
         sesKarti();
         gorunumKarti();
+        davranisKarti();
         genelKarti();
         yedekKarti();
         yardimKarti();
@@ -160,16 +165,7 @@ public class MainActivity extends Activity {
         zemin.setCornerRadius(dp(24));
         k.setBackground(zemin);
 
-        onizleme = new WebView(this);
-        onizleme.setBackgroundColor(Color.TRANSPARENT);
-        onizleme.getSettings().setJavaScriptEnabled(true);
-        onizleme.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView v, String adres) {
-                onizlemeBoya();
-            }
-        });
-        onizleme.loadUrl("file:///android_asset/robot.html");
+        onizleme = robotGorunumu();
         k.addView(onizleme, new LinearLayout.LayoutParams(dp(112), dp(112)));
 
         TextView ad = metin("Sahra", 28, METIN);
@@ -316,6 +312,50 @@ public class MainActivity extends Activity {
         kaydirici("Boyut", "boyut", 46, 184, 92, " dp", SahraService.YENILE);
     }
 
+    private void davranisKarti() {
+        kart("Robot davranışı");
+        ekle(kart, metin("Rastgele: 20 davranış sırayla karışık oynar. Normal: sade gözler. Birini seçerseniz hep onu yapar.", 12, SOLUK), 4, -2);
+        davranisOnizleme = robotGorunumu();
+        LinearLayout.LayoutParams ol = new LinearLayout.LayoutParams(dp(104), dp(104));
+        ol.gravity = Gravity.CENTER_HORIZONTAL;
+        ol.topMargin = dp(8);
+        kart.addView(davranisOnizleme, ol);
+        final TextView[] cipler = new TextView[Davranis.LISTE.length];
+        LinearLayout satir = null;
+        for (int i = 0; i < cipler.length; i++) {
+            // İlk satırda iki kip, sonra üçlü sıralar
+            if (i == 0 || i >= 2 && (i - 2) % 3 == 0) {
+                satir = new LinearLayout(this);
+                ekle(kart, satir, 8, -2);
+            }
+            final String kimlik = Davranis.LISTE[i][0];
+            cipler[i] = metin(Davranis.LISTE[i][1], 13, METIN);
+            cipler[i].setGravity(Gravity.CENTER);
+            cipler[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Ayar.al(MainActivity.this).edit().putString("davranis", kimlik).apply();
+                    cipleriBoya(cipler);
+                    onizlemeBoya();
+                    yenile();
+                }
+            });
+            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(0, dp(40), 1f);
+            l.leftMargin = dp(3);
+            l.rightMargin = dp(3);
+            satir.addView(cipler[i], l);
+        }
+        cipleriBoya(cipler);
+    }
+
+    private void cipleriBoya(TextView[] cipler) {
+        for (int i = 0; i < cipler.length; i++) {
+            boolean secili = Davranis.LISTE[i][0].equals(Ayar.davranis(this));
+            cipler[i].setTextColor(secili ? 0xFF06231A : METIN);
+            cipler[i].setBackground(basilabilir(sekil(secili ? VURGU : ALAN, 12, secili ? 0 : CIZGI)));
+        }
+    }
+
     private void genelKarti() {
         kart("Genel");
         ekle(kart, metin("Size nasıl hitap etsin?", 13, SOLUK), 6, -2);
@@ -362,7 +402,8 @@ public class MainActivity extends Activity {
                 {"Müzik ve ses", "müzik aç · sonraki şarkı · müziği durdur · sessize al · sesi aç · sesi kıs"},
                 {"Mesaj", "mesaj yaz akşam geliyorum · gönder"},
                 {"Ekran", "ekranı oku · Tamam butonuna tıkla · geri · ana ekran · aşağı kaydır"},
-                {"Robot", "büyü · küçül · rengini mavi yap · sesini değiştir"}};
+                {"Sorular", "Atatürk kim · yapay zekâ nedir · Ankara hakkında bilgi · maç ne zaman · pencereyi kapat"},
+                {"Robot", "büyü · küçül · rengini mavi yap · sesini değiştir · kalp göz yap · rastgele davran"}};
         for (String[] g : gruplar) {
             ekle(kart, metin(g[0], 13, VURGU), 12, -2);
             ekle(kart, metin(g[1], 14, METIN), 2, -2);
@@ -653,10 +694,30 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void onizlemeBoya() {
-        if (onizleme != null) {
-            onizleme.evaluateJavascript("window.robot&&robot('idle'," + JSONObject.quote(Ayar.renk(this)) + ")", null);
+    private WebView robotGorunumu() {
+        WebView w = new WebView(this);
+        w.setBackgroundColor(Color.TRANSPARENT);
+        w.getSettings().setJavaScriptEnabled(true);
+        w.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView v, String adres) {
+                boya(v);
+            }
+        });
+        w.loadUrl("file:///android_asset/robot.html");
+        return w;
+    }
+
+    private void boya(WebView w) {
+        if (w != null) {
+            w.evaluateJavascript("window.robot&&robot('idle'," + JSONObject.quote(Ayar.renk(this)) + ","
+                    + JSONObject.quote(Ayar.davranis(this)) + ")", null);
         }
+    }
+
+    private void onizlemeBoya() {
+        boya(onizleme);
+        boya(davranisOnizleme);
     }
 
     private TextView metin(String s, int boy, int renk) {

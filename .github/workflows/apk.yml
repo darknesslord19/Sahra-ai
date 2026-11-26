@@ -22,6 +22,10 @@ jobs:
           gradle-version: '8.7'
       - name: Komut testleri
         run: sh tests/calistir.sh
+      - name: Bilgi kaynağı denetimi
+        continue-on-error: true
+        run: |
+          curl -sS --fail --max-time 20 -A "Sahra/0.1 (https://github.com/darknesslord19/Sahra-ai)" "https://tr.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrlimit=1&prop=extracts%7Cpageimages&exintro=1&explaintext=1&pithumbsize=500&gsrsearch=Atat%C3%BCrk" | python3 -c "import json,sys; s=next(iter(json.load(sys.stdin)['query']['pages'].values())); print('SONUC baslik:', s['title'], '| resim:', 'thumbnail' in s, '|', s['extract'][:150])"
       - name: APK derle
         run: gradle --no-daemon :app:assembleRelease
       - name: testkey ile imzala

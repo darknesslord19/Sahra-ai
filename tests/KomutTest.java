@@ -54,6 +54,22 @@ public class KomutTest {
         if (com.guven.sahra.Ozel.bul(ozeller, "iş modunu kapat") != null) hata++;
         if (com.guven.sahra.Ozel.bul(ozeller, "") != null) hata++;
         if (com.guven.sahra.Ozel.adimlar(ozeller.get(0).isler).size() != 3) hata++;
+        t("Atatürk kim", "SORU", "Atatürk");
+        t("Sahra, Atatürk kimdir?", "SORU", "Atatürk");
+        t("yapay zekâ nedir", "SORU", "yapay zekâ");
+        t("Ankara hakkında bilgi ver", "SORU", "Ankara");
+        t("İstanbul'un nüfusu kaç", "GOOGLE_SORU", "İstanbul'un nüfusu kaç");
+        t("maç ne zaman", "GOOGLE_SORU", "maç ne zaman");
+        t("pencereyi kapat", "PENCERE_KAPAT", "");
+        t("kalp göz yap", "DAVRANIS", "heart");
+        t("rastgele davran", "DAVRANIS", "rastgele");
+        t("davranışını normal yap", "DAVRANIS", "normal");
+        t("gözlerini çarpı göz yap", "DAVRANIS", "xeyes");
+        t("rengini mavi yap", "RENK", "mavi");
+        t("müziği kapat", "MUZIK_DURDUR", "");
+        t("saat kaç", "SAAT", "");
+        t("mesaj yaz neredesin", "YAZ", "neredesin");
+        if (com.guven.sahra.Davranis.LISTE.length != 22) hata++;
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

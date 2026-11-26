@@ -25,7 +25,7 @@ import java.util.Locale;
 /** Kendi komutları ve ayarları saklar; depolamaya JSON olarak yedekler. */
 final class Yedek {
     static final String DOSYA = "sahra-yedek.json";
-    private static final String[] YAZI_AYARLARI = {"hitap", "renk", "muzik", "ses"};
+    private static final String[] YAZI_AYARLARI = {"hitap", "renk", "muzik", "ses", "davranis"};
     private static final String[] SAYI_AYARLARI = {"boyut", "hiz", "ton"};
 
     // ---------- Komutlar ----------

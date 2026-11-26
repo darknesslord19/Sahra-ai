@@ -38,8 +38,10 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -60,6 +62,7 @@ public class SahraService extends Service {
     private WebView web;
     private TextView yazi;
     private BalonCizim balonCizim;
+    private BilgiPenceresi pencere;
     private int deneme;
     private String sonSoz = "";
     private boolean yerelSes;
@@ -151,6 +154,7 @@ public class SahraService extends Service {
         ana.removeCallbacksAndMessages(null);
         if (tanima != null) tanima.destroy();
         if (konusma != null) konusma.shutdown();
+        if (pencere != null) pencere.kapat();
         if (balon != null) {
             pencereler.removeView(balon);
             pencereler.removeView(yazi);
@@ -226,6 +230,16 @@ public class SahraService extends Service {
         yaziAyar = pencereAyari(-2, -2, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         yaziAyar.alpha = 0.8f;
         pencereler.addView(yazi, yaziAyar);
+
+        pencere = new BilgiPenceresi(this, pencereler, new Runnable() {
+            @Override
+            public void run() {
+                if (konusma != null) konusma.stop();
+                konusuyor = false;
+                durum();
+                if (surekli()) ana.postDelayed(yenidenDinle, 600);
+            }
+        });
     }
 
     /** Balonu robotun üstüne, yer yoksa altına koyar; kuyruk robotu gösterir. */
@@ -262,7 +276,7 @@ public class SahraService extends Service {
 
     private void durum() {
         String d = dinliyor && (elleDinleme || sesBasladi) || konusuyor ? "active" : "idle";
-        web.evaluateJavascript("window.robot&&robot(" + JSONObject.quote(d) + "," + JSONObject.quote(Ayar.renk(this)) + ")", null);
+        web.evaluateJavascript("window.robot&&robot(" + JSONObject.quote(d) + "," + JSONObject.quote(Ayar.renk(this)) + "," + JSONObject.quote(Ayar.davranis(this)) + ")", null);
     }
 
     /** Metni balonda gösterir; uzunsa sayfalara bölüp sırayla hepsini gösterir. */
@@ -561,6 +575,8 @@ public class SahraService extends Service {
             @Override
             public void run() {
                 String soz = ozel.cevap.isEmpty() ? TextUtils.join("\n", cevaplar) : ozel.cevap;
+                // Soru adımı kendi cevabını söyler; üstüne konuşulmaz
+                if (soz.isEmpty() && pencere.acik()) return;
                 soyle(soz.isEmpty() ? "Tamam " + Ayar.hitap(SahraService.this) + "." : soz);
             }
         };
@@ -586,6 +602,21 @@ public class SahraService extends Service {
             case SES_DEGISTIR:
                 sesDegistir();
                 return;
+            case DAVRANIS:
+                Ayar.al(this).edit().putString("davranis", k.metin).apply();
+                durum();
+                break;
+            case PENCERE_KAPAT:
+                pencere.kapat();
+                break;
+            case SORU:
+                sor(k.metin);
+                return;
+            case GOOGLE_SORU:
+                duyulan = "";
+                pencere.google(k.metin);
+                konus(Ayar.hitap(this) + ", Google sonuçlarını gösteriyorum.");
+                return;
             default:
                 cevap = new Yurutucu(this).uygula(k);
         }
@@ -608,7 +639,7 @@ public class SahraService extends Service {
                     @Override public void onError(String id) { sesHatasi(); }
                 });
                 konusmaHazir = true;
-                if (bekleyenSoz != null) soyle(bekleyenSoz);
+                if (bekleyenSoz != null) konus(bekleyenSoz);
                 bekleyenSoz = null;
             }
         };
@@ -660,6 +691,47 @@ public class SahraService extends Service {
         // Balonda hem duyulan komut hem cevap görünür
         goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
         duyulan = "";
+        konus(metin);
+    }
+
+    /** Soruyu arka planda araştırır, cevabı pencerede gösterip özetini okur. */
+    private void sor(final String konu) {
+        duyulan = "";
+        ana.removeCallbacks(yaziGizle);
+        yazi.setVisibility(View.GONE);
+        if (!cevrimici()) {
+            soyle(Ayar.hitap(this) + ", bunu araştırmak için internet gerekiyor.");
+            return;
+        }
+        final int numara = pencere.yukleniyor(konu);
+        new Thread() {
+            @Override
+            public void run() {
+                Bilgi.Sonuc bulunan = null;
+                try {
+                    bulunan = Bilgi.ara(konu);
+                } catch (IOException | JSONException e) {
+                    // Aşağıda Google sonuçlarına geçilir
+                }
+                final Bilgi.Sonuc s = bulunan;
+                ana.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!calisiyor || !pencere.guncel(numara)) return;
+                        if (s == null) {
+                            pencere.google(konu);
+                            konus(Ayar.hitap(SahraService.this) + ", Google sonuçlarını gösteriyorum.");
+                        } else {
+                            pencere.goster(s);
+                            konus(Sayfa.bol(s.metin, 350).get(0));
+                        }
+                    }
+                });
+            }
+        }.start();
+    }
+
+    private void konus(String metin) {
         if (!konusmaHazir) {
             bekleyenSoz = metin;
             return;

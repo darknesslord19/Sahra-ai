@@ -17,6 +17,10 @@ final class Ayar {
         return al(c).getString("renk", "beyaz");
     }
 
+    static String davranis(Context c) {
+        return al(c).getString("davranis", "rastgele");
+    }
+
     /** Robotun kenar uzunluğu, dp. */
     static int boyut(Context c) {
         return al(c).getInt("boyut", 92);

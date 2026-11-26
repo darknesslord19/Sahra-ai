@@ -11,7 +11,7 @@ public final class Komut {
         MUZIK_CAL, MUZIK_ARA, MUZIK_DURDUR, SONRAKI, ONCEKI,
         YOUTUBE, WEB_ARA, UYGULAMA_AC, YAZ, GONDER, EKRAN_OKU, TIKLA,
         GERI, ANA_EKRAN, SON_UYGULAMALAR, BILDIRIMLER, ASAGI, YUKARI,
-        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, KAPAN, BILINMIYOR
+        BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, KAPAN, BILINMIYOR
     }
 
     public final Tur tur;
@@ -82,6 +82,13 @@ public final class Komut {
         if (s.matches(".*sesi (artir|yukselt|biraz ac)$")) return k(Tur.SES_ARTIR);
         if (s.matches(".*sesi (azalt|kis|dusur)$")) return k(Tur.SES_AZALT);
 
+        if (s.matches("(pencereyi|bilgiyi|popup ?i?) kapat|kapat")) return k(Tur.PENCERE_KAPAT);
+        for (String[] d : Davranis.LISTE) {
+            String ad = sade(d[1]);
+            if (s.matches("(davranisini |gozlerini |gozunu )" + ad + "( goz)?( yap| ol)?")
+                    || s.matches(ad + " (davran|goz(ler)?( yap)?|mod(u)?)")) return new Komut(Tur.DAVRANIS, d[0]);
+        }
+
         if (s.matches("(muzigi |sarkiyi |videoyu )?(durdur|duraklat)|muzigi kapat")) return k(Tur.MUZIK_DURDUR);
         if (s.matches("(sonraki|siradaki)( sarki| parca| video)?|sarkiyi gec")) return k(Tur.SONRAKI);
         if (s.matches("(onceki)( sarki| parca| video)?")) return k(Tur.ONCEKI);
@@ -124,6 +131,17 @@ public final class Komut {
         if (m.find()) {
             Komut t = parca(Tur.UYGULAMA_AC, ham, m);
             return new Komut(t.tur, t.metin.replaceAll("['’](y?[ıiuü])$", ""));
+        }
+
+        // Sorular en sonda: yukarıdaki komutlardan hiçbiri değilse
+        m = Pattern.compile("^(.+?) (?:kim|kimdir|kimdi|nedir|ne demek)$").matcher(s);
+        if (m.find()) return parca(Tur.SORU, ham, m);
+        m = Pattern.compile("^(.+?) hakkinda(?: bilgi)?(?: ver| goster| soyle)?$").matcher(s);
+        if (m.find()) return parca(Tur.SORU, ham, m);
+        m = Pattern.compile("^(.+?) arastir$").matcher(s);
+        if (m.find()) return parca(Tur.GOOGLE_SORU, ham, m);
+        if (s.indexOf(' ') > 0 && s.matches("(.* )?(nerede|neresi|nereli|ne zaman|nasil|neden|niye|kac|kacta|kimin|hangi|mi|mu|midir|mudur)( .*)?")) {
+            return new Komut(Tur.GOOGLE_SORU, ham);
         }
         return new Komut(Tur.BILINMIYOR, ham);
     }

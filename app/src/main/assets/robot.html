@@ -75,6 +75,28 @@ html,body{margin:0;height:100%;overflow:hidden;background:transparent;-webkit-ta
 #gbot.ex-scan .eye{height:22%}
 #gbot.ex-scan .eyes{animation:gbscan 1.8s ease-in-out both}
 @keyframes gbscan{0%,100%{transform:translateX(0)}12%{transform:translateX(-20%)}37%{transform:translateX(20%)}62%{transform:translateX(-20%)}87%{transform:translateX(20%)}}
+/* yeni davranışlar */
+#gbot.ex-cool .eyes{gap:3%}
+#gbot.ex-cool .eye{width:30%;height:25%;border-radius:18% 18% 48% 48%;background:linear-gradient(160deg,#e0fbff,#22d3ee 45%,#1d4ed8);box-shadow:0 0 7px rgba(34,211,238,.9)}
+#gbot.ex-cool .eye:first-child::after{content:"";position:absolute;left:96%;top:8%;width:20%;height:14%;background:#67e8f9}
+#gbot.ex-music .eye{width:10%;height:14%;border-radius:40%;animation:gbeq .32s ease-in-out infinite alternate}
+#gbot.ex-music .eye:last-child{animation-delay:-.32s}
+#gbot.ex-music .bot{animation:gblaugh .45s ease-in-out infinite alternate}
+@keyframes gbeq{from{height:10%}to{height:52%}}
+#gbot.ex-think .eyes{transform:translate(8%,-10%)}
+#gbot.ex-think .eye:last-child{height:17%}
+#gbot.ex-think .eye:last-child::after{content:"?";position:absolute;left:115%;top:-6px;font:800 10px/1 sans-serif;color:#fde68a;animation:gbbreathe 1s ease-in-out infinite}
+#gbot.ex-suspect .eye{width:15%;height:10%;border-radius:25%}
+#gbot.ex-suspect .eyes{animation:gbsus 2.6s ease-in-out infinite}
+@keyframes gbsus{0%,100%{transform:translateX(0)}20%,42%{transform:translateX(-12%)}62%,84%{transform:translateX(12%)}}
+#gbot.ex-pixel .eye{width:13%;height:27%;border-radius:0;background:#4ade80;box-shadow:0 0 6px #4ade80;animation:gbpixel 1s steps(2,jump-none) infinite}
+@keyframes gbpixel{50%{height:12%}}
+#gbot.ex-xeyes .eye{width:15%;height:34%;background:none;box-shadow:none;border-radius:0}
+#gbot.ex-xeyes .eye::before,#gbot.ex-xeyes .eye::after{content:"";position:absolute;left:38%;top:0;width:24%;height:100%;border-radius:2px;background:#fda4af;box-shadow:0 0 5px #fb7185;transform:rotate(40deg)}
+#gbot.ex-xeyes .eye::after{transform:rotate(-40deg)}
+#gbot.ex-excited .eye{width:14%;height:44%}
+#gbot.ex-excited .bot{animation:gbjump .38s ease-in-out infinite alternate}
+@keyframes gbjump{from{transform:translateY(1px) scale(1)}to{transform:translateY(-6px) scale(1.04)}}
 </style></head>
 <body>
 <div id="gbot" data-state="idle" data-color="beyaz"><div class="bot"><div class="halo green"></div><div class="halo rain"></div><div class="sphere"></div><div class="visor"></div><div class="rim green"></div><div class="rim rain"></div><div class="eyes" id="gbEyes"><div class="eye"></div><div class="eye"></div></div></div></div>
@@ -84,14 +106,25 @@ function olcek(){bot.style.transform='scale('+(Math.min(innerWidth,innerHeight)/
 addEventListener('resize',olcek);olcek();
 function blink(){bot.classList.add('blink');setTimeout(function(){bot.classList.remove('blink')},130)}
 (function bl(){setTimeout(function(){blink();if(Math.random()<.25)setTimeout(blink,260);bl()},1800+Math.random()*3600)})();
-(function look(){setTimeout(function(){var a=bot.getAttribute('data-state')==='active',x=(a?10:6)*Math.random()-(a?5:3),y=Math.random()*3-1.5;eyes.style.transform='translate('+x+'%,'+y+'%)';setTimeout(function(){eyes.style.transform=''},900+Math.random()*900);look()},bot.getAttribute('data-state')==='active'?700+Math.random()*900:2200+Math.random()*2600)})();
-var EX={heart:2200,wink:1100,side:1700,happy:1600,wow:1500,sleepy:3000,roll:1700,angry:1500,sad:2600,star:2200,dizzy:1300,laugh:1700,scan:1900},adlar=Object.keys(EX),cur=null,son='',zaman;
+(function look(){setTimeout(function(){var a=bot.getAttribute('data-state')==='active',x=(a?10:6)*Math.random()-(a?5:3),y=Math.random()*3-1.5;eyes.style.transform=EX[kip]?'':'translate('+x+'%,'+y+'%)';setTimeout(function(){eyes.style.transform=''},900+Math.random()*900);look()},bot.getAttribute('data-state')==='active'?700+Math.random()*900:2200+Math.random()*2600)})();
+var EX={heart:2200,wink:1100,side:1700,happy:1600,wow:1500,sleepy:3000,roll:1700,angry:1500,sad:2600,star:2200,dizzy:1300,laugh:1700,scan:1900,cool:2400,music:2400,think:2400,suspect:2600,pixel:2000,xeyes:1600,excited:1500},adlar=Object.keys(EX),cur=null,son='',zaman;
 function temizle(){if(cur)bot.classList.remove('ex-'+cur);cur=null;clearTimeout(zaman);eyes.style.transform=''}
 function oyna(n){temizle();cur=n;son=n;bot.classList.add('ex-'+n);zaman=setTimeout(temizle,EX[n])}
+/* kip: 'rastgele', 'normal' ya da bir davranış adı */
+var kip='rastgele',tekrar;
 /* Rastgele ifadeler yalnızca beklerken oynar */
-(function sira(){setTimeout(function(){if(!cur&&bot.getAttribute('data-state')==='idle'){var n;do{n=adlar[Math.floor(Math.random()*adlar.length)]}while(n===son);oyna(n)}sira()},2400+Math.random()*2600)})();
-function robot(state,color){
-  if(state==='active'&&bot.getAttribute('data-state')!=='active')temizle();
+(function sira(){setTimeout(function(){if(kip==='rastgele'&&!cur&&bot.getAttribute('data-state')==='idle'){var n;do{n=adlar[Math.floor(Math.random()*adlar.length)]}while(n===son);oyna(n)}sira()},2400+Math.random()*2600)})();
+function sabitle(){
+  clearInterval(tekrar);temizle();
+  if(!EX[kip])return;
+  var n=kip;
+  /* tek seferlik hareketler görünsün diye belli aralıkla yeniden başlatılır */
+  function bas(){bot.classList.remove('ex-'+n);void bot.offsetWidth;bot.classList.add('ex-'+n);cur=n;eyes.style.transform=''}
+  bas();tekrar=setInterval(bas,Math.max(3400,EX[n]+700));
+}
+function robot(state,color,yeniKip){
+  if(!EX[kip]&&state==='active'&&bot.getAttribute('data-state')!=='active')temizle();
   bot.setAttribute('data-state',state);bot.setAttribute('data-color',color);
+  if(yeniKip&&yeniKip!==kip){kip=yeniKip;sabitle()}
 }
 </script></body></html>
