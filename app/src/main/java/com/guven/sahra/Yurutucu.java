@@ -26,7 +26,8 @@ final class Yurutucu {
 
     String uygula(Komut k) {
         String h = Ayar.hitap(c);
-        String tamam = "Tamam " + h + ". ";
+        String[] onaylar = {"Tamam " + h + ". ", "Hemen " + h + ". ", "Peki " + h + ". ", "Tabii " + h + ". "};
+        String tamam = onaylar[(int) (Math.random() * onaylar.length)];
         switch (k.tur) {
             case SELAM:
                 return "Merhaba " + h + ", emirlerinizi yerine getiriyorum.";

@@ -11,7 +11,7 @@ public final class Komut {
         MUZIK_CAL, MUZIK_ARA, MUZIK_DURDUR, SONRAKI, ONCEKI,
         YOUTUBE, WEB_ARA, UYGULAMA_AC, YAZ, GONDER, EKRAN_OKU, TIKLA,
         GERI, ANA_EKRAN, SON_UYGULAMALAR, BILDIRIMLER, ASAGI, YUKARI,
-        BUYU, KUCUL, RENK, KAPAN, BILINMIYOR
+        BUYU, KUCUL, RENK, SES_DEGISTIR, KAPAN, BILINMIYOR
     }
 
     public final Tur tur;
@@ -73,6 +73,7 @@ public final class Komut {
         if (s.matches("(merhaba|selam|gunaydin|iyi aksamlar|naber|nasilsin)( .*)?")) return k(Tur.SELAM);
         if (s.matches(".*\\bsaat kac\\b.*")) return k(Tur.SAAT);
         if (s.matches(".*(bugun gunlerden|tarih ne|bugunun tarihi|ayin kaci).*")) return k(Tur.TARIH);
+        if (s.matches("(sesini|ses tonunu|konusma sesini) degistir")) return k(Tur.SES_DEGISTIR);
         if (s.matches("(robotu kapat|kendini kapat|kapan|gorusuruz)")) return k(Tur.KAPAN);
 
         if (s.matches("(.* )?(sessize al|sesi kapat|sesi kes|sus)")) return k(Tur.SESSIZ);

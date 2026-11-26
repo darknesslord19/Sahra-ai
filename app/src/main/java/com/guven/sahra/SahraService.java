@@ -6,6 +6,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ComponentName;
+import android.content.pm.ResolveInfo;
+import android.speech.tts.Voice;
+import android.text.TextUtils;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
@@ -37,6 +41,7 @@ import android.widget.TextView;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -45,6 +50,8 @@ public class SahraService extends Service {
     static final String KOMUT = "komut";
     static final String YENILE = "yenile";
     static final String DURDUR = "durdur";
+    static final String SES_DENE = "ses_dene";
+    static final String SES_SIRADAKI = "ses_siradaki";
     static boolean calisiyor;
 
     private final Handler ana = new Handler(Looper.getMainLooper());
@@ -52,6 +59,10 @@ public class SahraService extends Service {
     private FrameLayout balon;
     private WebView web;
     private TextView yazi;
+    private BalonCizim balonCizim;
+    private int deneme;
+    private String sonSoz = "";
+    private boolean yerelSes;
     private WindowManager.LayoutParams balonAyar;
     private WindowManager.LayoutParams yaziAyar;
     private SpeechRecognizer tanima;
@@ -72,9 +83,20 @@ public class SahraService extends Service {
     private final Runnable yaziGizle = new Runnable() {
         @Override
         public void run() {
-            yazi.setVisibility(View.GONE);
+            // Konuşurken ya da elle dinlerken balon kaybolmaz
+            if (konusuyor || elleDinleme) {
+                ana.postDelayed(this, 800);
+                return;
+            }
+            yazi.animate().alpha(0f).setDuration(220).withEndAction(new Runnable() {
+                @Override
+                public void run() {
+                    yazi.setVisibility(View.GONE);
+                }
+            });
         }
     };
+    private Runnable baslatici;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -100,6 +122,8 @@ public class SahraService extends Service {
         if (intent != null && intent.hasExtra(KOMUT)) {
             calistir(intent.getStringExtra(KOMUT));
         }
+        if (SES_SIRADAKI.equals(eylem)) sesDegistir();
+        if (SES_DENE.equals(eylem)) soyle("Merhaba " + Ayar.hitap(this) + ", sesim şimdi böyle. Nasıl buldunuz?");
         if (YENILE.equals(eylem)) {
             boyutla(Ayar.boyut(this));
             if (surekli()) {
@@ -179,17 +203,43 @@ public class SahraService extends Service {
         pencereler.addView(balon, balonAyar);
 
         yazi = new TextView(this);
-        yazi.setTextColor(Color.WHITE);
-        yazi.setBackgroundColor(0xEE2C2422);
-        yazi.setPadding(dp(12), dp(8), dp(12), dp(8));
-        yazi.setMaxLines(4);
+        yazi.setTextColor(0xFF14161F);
+        yazi.setTextSize(15);
+        yazi.setLineSpacing(0, 1.1f);
+        yazi.setMaxLines(6);
+        yazi.setEllipsize(TextUtils.TruncateAt.END);
+        yazi.setMaxWidth(Math.min(dp(260), ekran().widthPixels - dp(24)));
+        balonCizim = new BalonCizim(ekran().density);
+        yazi.setBackground(balonCizim);
         yazi.setVisibility(View.GONE);
-        // Yazı balonu dokunmaları alttaki uygulamaya bırakır
-        yaziAyar = pencereAyari(-1, -2, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-        yaziAyar.gravity = Gravity.BOTTOM;
-        yaziAyar.y = dp(90);
+        // Balon dokunmaları alttaki uygulamaya bırakır (Android bunun için saydamlık ister)
+        yaziAyar = pencereAyari(-2, -2, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         yaziAyar.alpha = 0.8f;
         pencereler.addView(yazi, yaziAyar);
+    }
+
+    /** Balonu robotun üstüne, yer yoksa altına koyar; kuyruk robotu gösterir. */
+    private void balonYerlestir() {
+        int bosluk = dp(12);
+        boolean ustte = true;
+        int en = 0;
+        int boy = 0;
+        for (int i = 0; i < 2; i++) {
+            balonCizim.kuyrukAltta = ustte;
+            yazi.setPadding(dp(16), dp(ustte ? 11 : 20), dp(16), dp(ustte ? 20 : 11));
+            yazi.measure(View.MeasureSpec.makeMeasureSpec(ekran().widthPixels - bosluk * 2, View.MeasureSpec.AT_MOST),
+                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            en = yazi.getMeasuredWidth();
+            boy = yazi.getMeasuredHeight();
+            if (ustte && balonAyar.y - boy < 0) ustte = false;
+            else break;
+        }
+        int orta = balonAyar.x + balonAyar.width / 2;
+        yaziAyar.x = Math.max(bosluk, Math.min(orta - en / 2, ekran().widthPixels - en - bosluk));
+        yaziAyar.y = ustte ? balonAyar.y - boy : balonAyar.y + balonAyar.height;
+        balonCizim.kuyrukX = orta - yaziAyar.x;
+        balonCizim.invalidateSelf();
+        pencereler.updateViewLayout(yazi, yaziAyar);
     }
 
     private WindowManager.LayoutParams pencereAyari(int en, int boy, int ek) {
@@ -206,10 +256,19 @@ public class SahraService extends Service {
     }
 
     private void goster(String metin) {
+        boolean yeni = yazi.getVisibility() != View.VISIBLE;
+        yazi.animate().cancel();
         yazi.setText(metin);
+        balonYerlestir();
         yazi.setVisibility(View.VISIBLE);
+        if (yeni) {
+            yazi.setAlpha(0f);
+            yazi.animate().alpha(1f).setDuration(180);
+        } else {
+            yazi.setAlpha(1f);
+        }
         ana.removeCallbacks(yaziGizle);
-        ana.postDelayed(yaziGizle, 5000);
+        ana.postDelayed(yaziGizle, Math.min(9000, 2500 + metin.length() * 55));
     }
 
     private void boyutla(int yeni) {
@@ -218,6 +277,7 @@ public class SahraService extends Service {
         balonAyar.width = dp(b);
         balonAyar.height = dp(b);
         pencereler.updateViewLayout(balon, balonAyar);
+        if (yazi.getVisibility() == View.VISIBLE) balonYerlestir();
         durum();
     }
 
@@ -248,6 +308,7 @@ public class SahraService extends Service {
                         balonAyar.x = Math.max(0, Math.min(bas + Math.round(dx), ekran().widthPixels - balonAyar.width));
                         balonAyar.y = Math.max(0, Math.min(ust + Math.round(dy), ekran().heightPixels - balonAyar.height));
                         pencereler.updateViewLayout(balon, balonAyar);
+                        if (yazi.getVisibility() == View.VISIBLE) balonYerlestir();
                     }
                     break;
                 }
@@ -259,6 +320,7 @@ public class SahraService extends Service {
                     } else {
                         if (konusma != null) konusma.stop();
                         konusuyor = false;
+                        deneme = 0;
                         dinle(true);
                     }
                     break;
@@ -273,6 +335,7 @@ public class SahraService extends Service {
 
     private void dinlemeyiBirak() {
         ana.removeCallbacks(yenidenDinle);
+        if (baslatici != null) ana.removeCallbacks(baslatici);
         if (tanima != null) {
             tanima.destroy();
             tanima = null;
@@ -282,25 +345,88 @@ public class SahraService extends Service {
         durum();
     }
 
-    private void dinle(boolean elle) {
+    /** Denenecek ses tanıma hizmetleri: son çalışan, Google, sonra telefonun varsayılanı (null). */
+    private List<ComponentName> tanimaAdaylari() {
+        List<ComponentName> l = new ArrayList<ComponentName>();
+        List<ResolveInfo> hizmetler = getPackageManager()
+                .queryIntentServices(new Intent("android.speech.RecognitionService"), 0);
+        for (String paket : new String[]{"com.google.android.googlequicksearchbox", "com.google.android.tts"}) {
+            for (ResolveInfo r : hizmetler) {
+                if (r.serviceInfo.packageName.equals(paket)) {
+                    l.add(new ComponentName(paket, r.serviceInfo.name));
+                    break;
+                }
+            }
+        }
+        l.add(null);
+        String iyi = Ayar.al(this).getString("tanima", "");
+        for (int i = 0; i < l.size(); i++) {
+            if (ad(l.get(i)).equals(iyi)) {
+                l.add(0, l.remove(i));
+                break;
+            }
+        }
+        return l;
+    }
+
+    private static String ad(ComponentName c) {
+        return c == null ? "varsayilan" : c.flattenToString();
+    }
+
+    private ComponentName secilen;
+
+    private void dinle(final boolean elle) {
         dinlemeyiBirak();
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            goster("Telefonda ses tanıma hizmeti bulunamadı.");
+        List<ComponentName> adaylar = tanimaAdaylari();
+        secilen = adaylar.get(deneme % adaylar.size());
+        if (secilen == null && !SpeechRecognizer.isRecognitionAvailable(this)) {
+            goster("Telefonda ses tanıma hizmeti bulunamadı. Google uygulamasını kurun.");
             return;
         }
-        tanima = SpeechRecognizer.createSpeechRecognizer(this);
-        tanima.setRecognitionListener(new Dinleyici());
-        Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
-                .putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
-        ConnectivityManager ag = getSystemService(ConnectivityManager.class);
-        if (ag.getActiveNetwork() == null) i.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
         dinliyor = true;
         elleDinleme = elle;
         if (elle) goster("Dinliyorum " + Ayar.hitap(this) + "…");
         durum();
-        tanima.startListening(i);
+        // Eski bağlantı kapanmadan yenisi açılırsa hizmet kopabiliyor; kısa süre beklenir
+        baslatici = new Runnable() {
+            @Override
+            public void run() {
+                tanima = secilen == null ? SpeechRecognizer.createSpeechRecognizer(SahraService.this)
+                        : SpeechRecognizer.createSpeechRecognizer(SahraService.this, secilen);
+                tanima.setRecognitionListener(new Dinleyici());
+                Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                        .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
+                        .putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+                if (!cevrimici()) i.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
+                tanima.startListening(i);
+            }
+        };
+        ana.postDelayed(baslatici, 250);
+    }
+
+    private boolean cevrimici() {
+        return getSystemService(ConnectivityManager.class).getActiveNetwork() != null;
+    }
+
+    private static String hataMetni(int hata) {
+        switch (hata) {
+            case SpeechRecognizer.ERROR_NO_MATCH:
+            case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
+                return "Sizi duyamadım, tekrar dokunun.";
+            case SpeechRecognizer.ERROR_NETWORK:
+            case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                return "İnternet bağlantısı sorunu. Çevrimdışı kullanım için Türkçe dil paketini indirin.";
+            case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
+                return "Mikrofon izni eksik. Sahra'ya ve Google uygulamasına mikrofon izni verin.";
+            case SpeechRecognizer.ERROR_AUDIO:
+                return "Mikrofon kullanılamıyor. Başka bir uygulama kullanıyor olabilir.";
+            case 12:
+            case 13:
+                return "Türkçe ses tanıma hazır değil. Google uygulamasından Türkçe dil paketini indirin.";
+            default:
+                return "Ses tanıma bağlanamadı (" + hata + "). Google uygulamasının güncel ve mikrofon izninin açık olduğunu kontrol edin.";
+        }
     }
 
     private final class Dinleyici implements RecognitionListener {
@@ -310,27 +436,41 @@ public class SahraService extends Service {
             boolean elle = elleDinleme;
             dinliyor = false;
             elleDinleme = false;
+            deneme = 0;
+            Ayar.al(SahraService.this).edit().putString("tanima", ad(secilen)).apply();
             durum();
             if (l != null && !l.isEmpty()) {
                 String s = l.get(0);
                 // Sürekli dinlemede yalnızca "Sahra" ile başlayan cümleler uygulanır
                 if (elle || Pattern.compile("^(hey |tamam )?sahra\\b").matcher(Komut.sade(s)).find()) calistir(s);
             }
-            if (surekli()) ana.postDelayed(yenidenDinle, 700);
+            if (surekli()) ana.postDelayed(yenidenDinle, 900);
         }
 
         @Override
         public void onError(int hata) {
-            boolean elle = elleDinleme;
+            final boolean elle = elleDinleme;
             dinliyor = false;
             elleDinleme = false;
             durum();
-            if (elle) {
-                goster(hata == SpeechRecognizer.ERROR_NO_MATCH || hata == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
-                        ? "Sizi duyamadım, tekrar dokunun."
-                        : "Ses tanıma hatası (" + hata + "). İnterneti veya Türkçe çevrimdışı dil paketini kontrol edin.");
+            boolean sessizlik = hata == SpeechRecognizer.ERROR_NO_MATCH || hata == SpeechRecognizer.ERROR_SPEECH_TIMEOUT;
+            // Bağlantı hatalarında (5, 8, 10, 11, 12, 13) sıradaki hizmetle yeniden dene
+            boolean baglanti = hata == SpeechRecognizer.ERROR_CLIENT || hata == SpeechRecognizer.ERROR_RECOGNIZER_BUSY
+                    || hata >= 10 && hata <= 13 || hata == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS;
+            if (baglanti && deneme < 3) {
+                deneme++;
+                ana.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!dinliyor && !konusuyor) dinle(elle);
+                    }
+                }, 700);
+                return;
             }
-            if (surekli()) ana.postDelayed(yenidenDinle, 1500);
+            if (elle) goster(hataMetni(hata));
+            if (!sessizlik) deneme++;
+            // Hata sürerse sürekli dinleme giderek daha seyrek dener
+            if (surekli()) ana.postDelayed(yenidenDinle, sessizlik ? 1200 : Math.min(30000, 2000 * Math.max(1, deneme)));
         }
 
         @Override public void onReadyForSpeech(Bundle b) { }
@@ -360,13 +500,16 @@ public class SahraService extends Service {
                 durum();
                 soyle("Tamam " + Ayar.hitap(this) + ".");
                 return;
+            case SES_DEGISTIR:
+                sesDegistir();
+                return;
             default:
                 soyle(new Yurutucu(this).uygula(k));
         }
     }
 
     private void konusmaKur() {
-        konusma = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+        TextToSpeech.OnInitListener hazir = new TextToSpeech.OnInitListener() {
             @Override
             public void onInit(int sonuc) {
                 if (sonuc != TextToSpeech.SUCCESS) return;
@@ -374,13 +517,43 @@ public class SahraService extends Service {
                 konusma.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                     @Override public void onStart(String id) { }
                     @Override public void onDone(String id) { bitti(); }
-                    @Override public void onError(String id) { bitti(); }
+                    @Override public void onError(String id) { sesHatasi(); }
                 });
                 konusmaHazir = true;
                 if (bekleyenSoz != null) soyle(bekleyenSoz);
                 bekleyenSoz = null;
             }
+        };
+        // Google ses motoru varsa onu kullan; Türkçe sesleri genelde daha doğaldır
+        konusma = Ses.googleVar(this) ? new TextToSpeech(this, hazir, Ses.GOOGLE) : new TextToSpeech(this, hazir);
+    }
+
+    /** İnternetli ses başarısız olursa aynı cümle telefondaki sesle söylenir. */
+    private void sesHatasi() {
+        ana.post(new Runnable() {
+            @Override
+            public void run() {
+                if (!yerelSes && !sonSoz.isEmpty()) {
+                    yerelSes = true;
+                    seslendir(sonSoz);
+                } else {
+                    bitti();
+                }
+            }
         });
+    }
+
+    private void sesDegistir() {
+        if (!konusmaHazir) return;
+        List<Voice> sesler = Ses.turkce(konusma, cevrimici());
+        if (sesler.size() < 2) {
+            soyle(Ayar.hitap(this) + ", telefonda başka Türkçe ses bulamadım. Ses ayarlarından indirebilirsiniz.");
+            return;
+        }
+        Voice simdiki = Ses.sec(this, sesler);
+        int sira = (sesler.indexOf(simdiki) + 1) % sesler.size();
+        Ayar.al(this).edit().putString("ses", sesler.get(sira).getName()).apply();
+        soyle("Merhaba " + Ayar.hitap(this) + ". Bu, " + sesler.size() + " sesten " + (sira + 1) + " numaralı olanı.");
     }
 
     private void bitti() {
@@ -405,7 +578,20 @@ public class SahraService extends Service {
         if (dinliyor) dinlemeyiBirak();
         konusuyor = true;
         durum();
-        if (konusma.speak(metin, TextToSpeech.QUEUE_FLUSH, null, "sahra") != TextToSpeech.SUCCESS) konusuyor = false;
+        yerelSes = false;
+        sonSoz = metin;
+        seslendir(metin);
+    }
+
+    private void seslendir(String metin) {
+        Voice v = Ses.sec(this, Ses.turkce(konusma, cevrimici() && !yerelSes));
+        if (v != null) konusma.setVoice(v);
+        konusma.setSpeechRate(Ayar.al(this).getInt("hiz", 100) / 100f);
+        konusma.setPitch(Ayar.al(this).getInt("ton", 100) / 100f);
+        if (konusma.speak(metin, TextToSpeech.QUEUE_FLUSH, null, "sahra") != TextToSpeech.SUCCESS) {
+            konusuyor = false;
+            durum();
+        }
     }
 
     private DisplayMetrics ekran() {

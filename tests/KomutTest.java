@@ -17,6 +17,7 @@ public class KomutTest {
         t("Hey Sahra saat kaç?", "SAAT", "");
         t("telefonu sessize al", "SESSIZ", "");
         t("sus", "SESSIZ", "");
+        t("sesini değiştir", "SES_DEGISTIR", "");
         t("Sesi aç", "SES_AC", "");
         t("sesi kıs", "SES_AZALT", "");
         t("sesi yükselt", "SES_ARTIR", "");
