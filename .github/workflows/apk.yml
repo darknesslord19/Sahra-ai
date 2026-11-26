@@ -23,8 +23,12 @@ jobs:
       - name: Komut testleri
         run: sh tests/calistir.sh
       - name: APK derle
-        run: gradle --no-daemon :app:assembleDebug
-      - run: cp app/build/outputs/apk/debug/app-debug.apk Sahra.apk
+        run: gradle --no-daemon :app:assembleRelease
+      - name: testkey ile imzala
+        run: |
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" sign --key imza/testkey.pk8 --cert imza/testkey.x509.pem --out Sahra.apk app/build/outputs/apk/release/app-release-unsigned.apk
+          "$BT/apksigner" verify --print-certs Sahra.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Sahra-APK
@@ -32,4 +36,4 @@ jobs:
       - name: Sürüm olarak yayınla
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "v0.1.${{ github.run_number }}" Sahra.apk --title "Sahra 0.1.${{ github.run_number }}" --notes "Deneme (debug) APK" --target "${{ github.sha }}"
+        run: gh release create "v0.1.${{ github.run_number }}" Sahra.apk --title "Sahra 0.1.${{ github.run_number }}" --notes "testkey ile imzalı deneme APK" --target "${{ github.sha }}"

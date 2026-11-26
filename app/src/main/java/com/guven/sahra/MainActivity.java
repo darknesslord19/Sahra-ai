@@ -325,7 +325,7 @@ public class MainActivity extends Activity {
         kart("Komutlar");
         ekle(kart, metin("Robota dokunup söyleyin. Basılı tutunca bu ekran açılır.", 12, SOLUK), 4, -2);
         String[][] gruplar = {
-                {"Genel", "merhaba · saat kaç · tarih ne · robotu kapat"},
+                {"Genel", "merhaba · saat kaç · tarih ne · pil kaç · bilgileri göster · robotu kapat"},
                 {"Uygulama", "WhatsApp aç · YouTube'dan aksiyon filmi aç · Chrome'da hava durumu ara"},
                 {"Müzik ve ses", "müzik aç · sonraki şarkı · müziği durdur · sessize al · sesi aç · sesi kıs"},
                 {"Mesaj", "mesaj yaz akşam geliyorum · gönder"},

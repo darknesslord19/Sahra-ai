@@ -2,29 +2,95 @@
 <html lang="tr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-html,body{margin:0;height:100%;overflow:hidden;background:transparent}
-#bot{position:absolute;left:11%;top:11%;width:78%;height:78%;animation:bob 4.6s ease-in-out infinite}
-@keyframes bob{50%{transform:translateY(-4%)}}
-.sphere{position:absolute;inset:0;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,.35),inset 0 -4px 8px rgba(60,60,80,.3);background:radial-gradient(circle at 34% 28%,#fff 0%,#f1f4f9 38%,#d3d9e4 78%,#b8c0cf 100%)}
-[data-color=siyah] .sphere{background:radial-gradient(circle at 34% 28%,#9aa2b2,#4a505e 38%,#262a34 78%,#12141a)}
-[data-color=mavi] .sphere{background:radial-gradient(circle at 34% 28%,#e6f4ff,#6bb8ff 38%,#2b7be0 78%,#1c4f9c)}
-[data-color=turkuaz] .sphere{background:radial-gradient(circle at 34% 28%,#e4fffd,#5ee6dc 38%,#14b0aa 78%,#0b6f70)}
-[data-color=yesil] .sphere{background:radial-gradient(circle at 34% 28%,#ecffe9,#7edc7a 38%,#2fa84a 78%,#1b6a31)}
-[data-color=mor] .sphere{background:radial-gradient(circle at 34% 28%,#f3eaff,#b28cff 38%,#7a4ce0 78%,#4a2a94)}
-[data-color=pembe] .sphere{background:radial-gradient(circle at 34% 28%,#fff0f7,#ff9cc8 38%,#ec5599 78%,#a92c66)}
-[data-color=kirmizi] .sphere{background:radial-gradient(circle at 34% 28%,#ffece8,#ff7a6b 38%,#d93630 78%,#8c1c1c)}
-[data-color=altin] .sphere{background:radial-gradient(circle at 34% 28%,#fffbe3,#ffd96a 38%,#d9a21f 78%,#8f6610)}
-.visor{position:absolute;left:7%;right:7%;top:21%;height:58%;border-radius:30%/44%;background:#07080d;border:2px solid #34d399;box-shadow:0 0 6px #34d399;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:20%}
-.eye{width:11%;height:32%;border-radius:50%;background:#c9ffe6;box-shadow:0 0 7px #6ef0be;transition:height .2s}
-.blink .eye{height:3%}
-[data-state=active] .visor{animation:rain 1.8s linear infinite}
-@keyframes rain{0%,100%{border-color:#22d3ee;box-shadow:0 0 9px #22d3ee}33%{border-color:#8b5cf6;box-shadow:0 0 9px #8b5cf6}66%{border-color:#ec4899;box-shadow:0 0 9px #ec4899}}
-[data-state=active] .eye{background:#eaf6ff;box-shadow:0 0 7px #8fd8ff;animation:talk .5s ease-in-out infinite alternate}
-@keyframes talk{to{height:45%}}
+html,body{margin:0;height:100%;overflow:hidden;background:transparent;-webkit-tap-highlight-color:transparent}
+/* Robot taslaktaki ölçülerle 62px çizilir, pencereye göre büyütülür */
+#gbot{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px}
+#gbot .bot{position:absolute;inset:0;animation:gbbob 4.6s ease-in-out infinite;transform-origin:50% 90%}
+@keyframes gbbob{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-3px) rotate(1.5deg)}}
+#gbot .sphere{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 34% 28%,#fff 0%,#f1f4f9 38%,#d3d9e4 78%,#b8c0cf 100%);box-shadow:0 2px 5px rgba(0,0,0,.3),inset 0 -4px 8px rgba(120,130,150,.35),inset 0 3px 5px rgba(255,255,255,.9)}
+#gbot[data-color=siyah] .sphere{background:radial-gradient(circle at 34% 28%,#9aa2b2 0%,#4a505e 38%,#262a34 78%,#12141a 100%)}
+#gbot[data-color=mavi] .sphere{background:radial-gradient(circle at 34% 28%,#e6f4ff 0%,#6bb8ff 38%,#2b7be0 78%,#1c4f9c 100%)}
+#gbot[data-color=turkuaz] .sphere{background:radial-gradient(circle at 34% 28%,#e4fffd 0%,#5ee6dc 38%,#14b0aa 78%,#0b6f70 100%)}
+#gbot[data-color=yesil] .sphere{background:radial-gradient(circle at 34% 28%,#ecffe9 0%,#7edc7a 38%,#2fa84a 78%,#1b6a31 100%)}
+#gbot[data-color=mor] .sphere{background:radial-gradient(circle at 34% 28%,#f3eaff 0%,#b28cff 38%,#7a4ce0 78%,#4a2a94 100%)}
+#gbot[data-color=pembe] .sphere{background:radial-gradient(circle at 34% 28%,#fff0f7 0%,#ff9cc8 38%,#ec5599 78%,#a92c66 100%)}
+#gbot[data-color=kirmizi] .sphere{background:radial-gradient(circle at 34% 28%,#ffece8 0%,#ff7a6b 38%,#d93630 78%,#8c1c1c 100%)}
+#gbot[data-color=altin] .sphere{background:radial-gradient(circle at 34% 28%,#fffbe3 0%,#ffd96a 38%,#d9a21f 78%,#8f6610 100%)}
+#gbot .visor{position:absolute;left:7%;right:7%;top:21%;height:58%;border-radius:30% / 44%;background:radial-gradient(ellipse at 50% 35%,#12131b 0%,#07080d 70%);overflow:hidden}
+#gbot .visor::after{content:"";position:absolute;left:12%;right:40%;top:6%;height:18%;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0))}
+@property --ga{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes gbspin{to{--ga:360deg}}
+#gbot .rim{position:absolute;left:3.2%;right:3.2%;top:17.5%;height:65%;border-radius:33% / 47%;padding:4px;opacity:0;transition:opacity .4s ease;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+#gbot .rim.green{background:conic-gradient(from var(--ga),#22c58b,#6ee7b7,#22c58b,#10b981,#6ee7b7,#22c58b)}
+#gbot .rim.rain{background:conic-gradient(from var(--ga),#22d3ee,#3b82f6,#8b5cf6,#d946ef,#ec4899,#3b82f6,#22d3ee);animation:gbspin 1.9s linear infinite}
+#gbot .halo{position:absolute;left:0;right:0;top:16%;height:68%;border-radius:50%;filter:blur(3px);opacity:0;transition:opacity .4s ease}
+#gbot .halo.green{background:radial-gradient(closest-side,rgba(52,211,153,.55),rgba(52,211,153,0))}
+#gbot .halo.rain{background:conic-gradient(from var(--ga),rgba(34,211,238,.7),rgba(168,85,247,.7),rgba(236,72,153,.7),rgba(59,130,246,.7),rgba(34,211,238,.7));animation:gbspin 1.9s linear infinite}
+#gbot[data-state=idle] .rim.green{opacity:1}
+#gbot[data-state=idle] .halo.green{opacity:1;animation:gbbreathe 3.2s ease-in-out infinite}
+#gbot[data-state=active] .rim.rain{opacity:1}
+#gbot[data-state=active] .halo.rain{opacity:.95}
+@keyframes gbbreathe{0%,100%{opacity:.55}50%{opacity:1}}
+#gbot .eyes{position:absolute;left:0;right:0;top:21%;height:58%;display:flex;justify-content:center;gap:20%;transition:transform .35s cubic-bezier(.3,.9,.3,1)}
+#gbot .eye{position:relative;width:10.5%;height:31%;align-self:center;border-radius:50%;background:radial-gradient(circle at 50% 42%,#fff 0%,#e9f6ff 45%,#8fd8ff 100%);box-shadow:0 0 7px 1px rgba(150,220,255,.9),0 0 16px 3px rgba(110,190,255,.45);transition:transform .12s ease,background .5s,box-shadow .5s,height .3s}
+#gbot[data-state=idle] .eye{background:radial-gradient(circle at 50% 42%,#fff 0%,#e6fff4 45%,#86efc4 100%);box-shadow:0 0 7px 1px rgba(110,240,190,.9),0 0 16px 3px rgba(52,211,153,.4)}
+#gbot[data-state=active] .eye{height:35%}
+#gbot.blink .eye{transform:scaleY(.08)}
+/* ifadeler */
+#gbot.ex-happy .eye,#gbot.ex-laugh .eye{height:19%;border-radius:60% 60% 30% 30%;transform:translateY(-8%)}
+#gbot.ex-laugh .bot{animation:gblaugh .22s ease-in-out 8 alternate}
+@keyframes gblaugh{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-4px) rotate(3deg)}}
+#gbot.ex-heart .eyes{filter:drop-shadow(0 0 4px rgba(255,80,150,.95)) drop-shadow(0 0 9px rgba(255,80,150,.5))}
+#gbot.ex-heart .eye{width:19%;height:44%;border-radius:0;background:linear-gradient(160deg,#ffd1e6,#ff4d94 70%);box-shadow:none;animation:gbheartbeat .55s ease-in-out infinite alternate;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s-7.5-4.6-9.6-9.3C.8 8 2.9 4.5 6.3 4.5c2 0 3.6 1.1 4.4 2.6.8-1.5 2.4-2.6 4.4-2.6 3.4 0 5.5 3.5 3.9 7.2C19.5 16.4 12 21 12 21z'/%3E%3C/svg%3E") center / contain no-repeat}
+@keyframes gbheartbeat{from{transform:scale(.88)}to{transform:scale(1.12)}}
+#gbot.ex-star .eyes{filter:drop-shadow(0 0 4px rgba(255,214,90,.95)) drop-shadow(0 0 9px rgba(255,190,60,.55))}
+#gbot.ex-star .eye{width:20%;height:46%;border-radius:0;background:linear-gradient(160deg,#fff6c9,#ffc933 75%);box-shadow:none;animation:gbspinstar 1.6s linear infinite;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5l3 7 7.5.7-5.7 5 1.8 7.4L12 17.6l-6.6 4 1.8-7.4-5.7-5L9 8.5z'/%3E%3C/svg%3E") center / contain no-repeat}
+@keyframes gbspinstar{to{transform:rotate(360deg)}}
+#gbot.ex-wink .eye:first-child{transform:scaleY(.1)}
+#gbot.ex-wink .eye:last-child{height:36%}
+#gbot.ex-side .eyes{animation:gbsidelook 1.7s ease-in-out both}
+@keyframes gbsidelook{0%{transform:translateX(0)}18%,42%{transform:translateX(-24%)}58%,82%{transform:translateX(24%)}100%{transform:translateX(0)}}
+#gbot.ex-roll .eyes{animation:gbrolleyes 1.7s ease-in-out both}
+@keyframes gbrolleyes{0%{transform:translate(0,0)}20%{transform:translate(0,-14%)}40%{transform:translate(16%,-3%)}60%{transform:translate(0,12%)}80%{transform:translate(-16%,-3%)}100%{transform:translate(0,0)}}
+#gbot.ex-wow .eye{width:14%;height:50%}
+#gbot.ex-wow .bot{animation:gbhop .5s ease-out 1,gbbob 4.6s ease-in-out .5s infinite}
+@keyframes gbhop{0%{transform:translateY(0) scale(1)}40%{transform:translateY(-7px) scale(1.04)}100%{transform:translateY(0) scale(1)}}
+#gbot.ex-sleepy .eye{height:11%;border-radius:60% 60% 50% 50%;transition:height 1s ease}
+#gbot.ex-sleepy .bot{animation:gbnod 2.2s ease-in-out infinite}
+@keyframes gbnod{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(2px) rotate(5deg)}}
+#gbot.ex-angry .eye{height:27%;width:12%;background:radial-gradient(circle at 50% 42%,#fff 0%,#ffd0d0 45%,#ff5a5a 100%);box-shadow:0 0 7px 1px rgba(255,100,100,.95),0 0 16px 3px rgba(255,60,60,.5)}
+#gbot.ex-angry .eye:first-child{transform:rotate(24deg)}
+#gbot.ex-angry .eye:last-child{transform:rotate(-24deg)}
+#gbot.ex-angry .bot{animation:gbshake .09s linear 8}
+@keyframes gbshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px) rotate(-1.5deg)}75%{transform:translateX(2px) rotate(1.5deg)}}
+#gbot.ex-sad .eye{height:30%}
+#gbot.ex-sad .eye:first-child{transform:rotate(-20deg)}
+#gbot.ex-sad .eye:last-child{transform:rotate(20deg)}
+#gbot.ex-sad .eye:last-child::after{content:"";position:absolute;left:50%;top:105%;width:70%;height:80%;margin-left:-35%;border-radius:50% 50% 50% 50% / 30% 30% 70% 70%;background:#9fdcff;box-shadow:0 0 5px #7cc9ff;animation:gbtear 1.1s ease-in infinite}
+@keyframes gbtear{0%{transform:translateY(-30%);opacity:0}25%{opacity:1}100%{transform:translateY(150%);opacity:0}}
+#gbot.ex-dizzy .eye{width:17%;height:48%;background:repeating-radial-gradient(circle at 50% 50%,#fff 0 1.2px,rgba(0,0,0,0) 1.2px 3px);box-shadow:0 0 8px rgba(150,220,255,.8);animation:gbspinstar .9s linear infinite}
+#gbot.ex-dizzy .eyes{animation:gbwobble 1.2s ease-in-out both}
+@keyframes gbwobble{0%,100%{transform:translate(0,0)}25%{transform:translate(6%,-6%)}50%{transform:translate(0,6%)}75%{transform:translate(-6%,-6%)}}
+#gbot.ex-scan .eye{height:22%}
+#gbot.ex-scan .eyes{animation:gbscan 1.8s ease-in-out both}
+@keyframes gbscan{0%,100%{transform:translateX(0)}12%{transform:translateX(-20%)}37%{transform:translateX(20%)}62%{transform:translateX(-20%)}87%{transform:translateX(20%)}}
 </style></head>
-<body><div id="bot" data-state="idle" data-color="beyaz"><div class="sphere"></div><div class="visor"><div class="eye"></div><div class="eye"></div></div></div>
+<body>
+<div id="gbot" data-state="idle" data-color="beyaz"><div class="bot"><div class="halo green"></div><div class="halo rain"></div><div class="sphere"></div><div class="visor"></div><div class="rim green"></div><div class="rim rain"></div><div class="eyes" id="gbEyes"><div class="eye"></div><div class="eye"></div></div></div></div>
 <script>
-var b=document.getElementById('bot');
-setInterval(function(){b.classList.add('blink');setTimeout(function(){b.classList.remove('blink')},140)},3500);
-function robot(state,color){b.setAttribute('data-state',state);b.setAttribute('data-color',color)}
+var bot=document.getElementById('gbot'),eyes=document.getElementById('gbEyes');
+function olcek(){bot.style.transform='scale('+(Math.min(innerWidth,innerHeight)/78)+')'}
+addEventListener('resize',olcek);olcek();
+function blink(){bot.classList.add('blink');setTimeout(function(){bot.classList.remove('blink')},130)}
+(function bl(){setTimeout(function(){blink();if(Math.random()<.25)setTimeout(blink,260);bl()},1800+Math.random()*3600)})();
+(function look(){setTimeout(function(){var a=bot.getAttribute('data-state')==='active',x=(a?10:6)*Math.random()-(a?5:3),y=Math.random()*3-1.5;eyes.style.transform='translate('+x+'%,'+y+'%)';setTimeout(function(){eyes.style.transform=''},900+Math.random()*900);look()},bot.getAttribute('data-state')==='active'?700+Math.random()*900:2200+Math.random()*2600)})();
+var EX={heart:2200,wink:1100,side:1700,happy:1600,wow:1500,sleepy:3000,roll:1700,angry:1500,sad:2600,star:2200,dizzy:1300,laugh:1700,scan:1900},adlar=Object.keys(EX),cur=null,son='',zaman;
+function temizle(){if(cur)bot.classList.remove('ex-'+cur);cur=null;clearTimeout(zaman);eyes.style.transform=''}
+function oyna(n){temizle();cur=n;son=n;bot.classList.add('ex-'+n);zaman=setTimeout(temizle,EX[n])}
+/* Rastgele ifadeler yalnızca beklerken oynar */
+(function sira(){setTimeout(function(){if(!cur&&bot.getAttribute('data-state')==='idle'){var n;do{n=adlar[Math.floor(Math.random()*adlar.length)]}while(n===son);oyna(n)}sira()},2400+Math.random()*2600)})();
+function robot(state,color){
+  if(state==='active'&&bot.getAttribute('data-state')!=='active')temizle();
+  bot.setAttribute('data-state',state);bot.setAttribute('data-color',color);
+}
 </script></body></html>

@@ -63,6 +63,16 @@ public class SahraService extends Service {
     private int deneme;
     private String sonSoz = "";
     private boolean yerelSes;
+    private boolean sesBasladi;
+    private String duyulan = "";
+    private final List<String> sayfalar = new ArrayList<String>();
+    private int sayfa;
+    private final Runnable sonrakiSayfa = new Runnable() {
+        @Override
+        public void run() {
+            if (++sayfa < sayfalar.size()) sayfaGoster();
+        }
+    };
     private WindowManager.LayoutParams balonAyar;
     private WindowManager.LayoutParams yaziAyar;
     private SpeechRecognizer tanima;
@@ -84,7 +94,7 @@ public class SahraService extends Service {
         @Override
         public void run() {
             // Konuşurken ya da elle dinlerken balon kaybolmaz
-            if (konusuyor || elleDinleme) {
+            if (konusuyor || elleDinleme || sayfa < sayfalar.size() - 1) {
                 ana.postDelayed(this, 800);
                 return;
             }
@@ -206,7 +216,7 @@ public class SahraService extends Service {
         yazi.setTextColor(0xFF14161F);
         yazi.setTextSize(15);
         yazi.setLineSpacing(0, 1.1f);
-        yazi.setMaxLines(6);
+        yazi.setMaxLines(12);
         yazi.setEllipsize(TextUtils.TruncateAt.END);
         yazi.setMaxWidth(Math.min(dp(260), ekran().widthPixels - dp(24)));
         balonCizim = new BalonCizim(ekran().density);
@@ -251,11 +261,25 @@ public class SahraService extends Service {
     }
 
     private void durum() {
-        String d = dinliyor && elleDinleme || konusuyor ? "active" : "idle";
+        String d = dinliyor && (elleDinleme || sesBasladi) || konusuyor ? "active" : "idle";
         web.evaluateJavascript("window.robot&&robot(" + JSONObject.quote(d) + "," + JSONObject.quote(Ayar.renk(this)) + ")", null);
     }
 
+    /** Metni balonda gösterir; uzunsa sayfalara bölüp sırayla hepsini gösterir. */
     private void goster(String metin) {
+        ana.removeCallbacks(sonrakiSayfa);
+        sayfalar.clear();
+        sayfalar.addAll(Sayfa.bol(metin, 260));
+        sayfa = 0;
+        sayfaGoster();
+    }
+
+    private void sayfaGoster() {
+        String metin = sayfalar.get(sayfa);
+        if (sayfalar.size() > 1) {
+            metin += "\n" + (sayfa + 1) + "/" + sayfalar.size();
+            ana.postDelayed(sonrakiSayfa, 2000 + sayfalar.get(sayfa).length() * 60);
+        }
         boolean yeni = yazi.getVisibility() != View.VISIBLE;
         yazi.animate().cancel();
         yazi.setText(metin);
@@ -342,6 +366,7 @@ public class SahraService extends Service {
         }
         dinliyor = false;
         elleDinleme = false;
+        sesBasladi = false;
         durum();
     }
 
@@ -385,7 +410,8 @@ public class SahraService extends Service {
         }
         dinliyor = true;
         elleDinleme = elle;
-        if (elle) goster("Dinliyorum " + Ayar.hitap(this) + "…");
+        duyulan = "";
+        if (elle) goster("🎤 Dinliyorum " + Ayar.hitap(this) + "…");
         durum();
         // Eski bağlantı kapanmadan yenisi açılırsa hizmet kopabiliyor; kısa süre beklenir
         baslatici = new Runnable() {
@@ -398,6 +424,7 @@ public class SahraService extends Service {
                         .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         .putExtra(RecognizerIntent.EXTRA_LANGUAGE, "tr-TR")
                         .putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+                i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
                 if (!cevrimici()) i.putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true);
                 tanima.startListening(i);
             }
@@ -436,6 +463,7 @@ public class SahraService extends Service {
             boolean elle = elleDinleme;
             dinliyor = false;
             elleDinleme = false;
+            sesBasladi = false;
             deneme = 0;
             Ayar.al(SahraService.this).edit().putString("tanima", ad(secilen)).apply();
             durum();
@@ -452,6 +480,7 @@ public class SahraService extends Service {
             final boolean elle = elleDinleme;
             dinliyor = false;
             elleDinleme = false;
+            sesBasladi = false;
             durum();
             boolean sessizlik = hata == SpeechRecognizer.ERROR_NO_MATCH || hata == SpeechRecognizer.ERROR_SPEECH_TIMEOUT;
             // Bağlantı hatalarında (5, 8, 10, 11, 12, 13) sıradaki hizmetle yeniden dene
@@ -474,17 +503,31 @@ public class SahraService extends Service {
         }
 
         @Override public void onReadyForSpeech(Bundle b) { }
-        @Override public void onBeginningOfSpeech() { }
+        @Override
+        public void onBeginningOfSpeech() {
+            sesBasladi = true;
+            durum();
+        }
+
         @Override public void onRmsChanged(float v) { }
         @Override public void onBufferReceived(byte[] b) { }
         @Override public void onEndOfSpeech() { }
-        @Override public void onPartialResults(Bundle b) { }
+        /** Duyulanı söylerken balonda gösterir. */
+        @Override
+        public void onPartialResults(Bundle b) {
+            ArrayList<String> l = b.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+            if (l == null || l.isEmpty() || l.get(0).isEmpty()) return;
+            String s = l.get(0);
+            if (elleDinleme || Pattern.compile("^(hey |tamam )?sahra\\b").matcher(Komut.sade(s)).find()) goster("🎤 " + s);
+        }
+
         @Override public void onEvent(int t, Bundle b) { }
     }
 
     // ---------- Komut ve konuşma ----------
 
     private void calistir(String cumle) {
+        duyulan = cumle;
         Komut k = Komut.coz(cumle);
         switch (k.tur) {
             case KAPAN:
@@ -569,7 +612,9 @@ public class SahraService extends Service {
     }
 
     private void soyle(String metin) {
-        goster(metin);
+        // Balonda hem duyulan komut hem cevap görünür
+        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
+        duyulan = "";
         if (!konusmaHazir) {
             bekleyenSoz = metin;
             return;

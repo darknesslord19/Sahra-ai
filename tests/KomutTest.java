@@ -41,6 +41,13 @@ public class KomutTest {
         t("rengini mavi yap", "RENK", "mavi");
         t("Tamam butonuna tıkla", "TIKLA", "Tamam");
         t("bugün canım sıkılıyor", "BILINMIYOR", "bugün canım sıkılıyor");
+        t("pil kaç", "BILGI", "");
+        t("bütün bilgileri göster", "BILGI", "");
+        String uzun = new String(new char[100]).replace("\0", "kelime ").trim();
+        java.util.List<String> p = com.guven.sahra.Sayfa.bol(uzun, 260);
+        if (!String.join(" ", p).equals(uzun) || p.size() < 3) hata++;
+        for (String x : p) if (x.length() > 260) hata++;
+        if (com.guven.sahra.Sayfa.bol("", 260).size() != 1) hata++;
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

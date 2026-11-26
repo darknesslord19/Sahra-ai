@@ -6,7 +6,9 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.net.ConnectivityManager;
 import android.net.Uri;
+import android.os.BatteryManager;
 import android.provider.MediaStore;
 import android.view.KeyEvent;
 
@@ -35,6 +37,8 @@ final class Yurutucu {
                 return h + ", saat " + new SimpleDateFormat("HH:mm", Locale.US).format(new Date());
             case TARIH:
                 return h + ", bugün " + new SimpleDateFormat("d MMMM yyyy EEEE", new Locale("tr", "TR")).format(new Date());
+            case BILGI:
+                return bilgi(h);
             case SESSIZ:
                 return sessiz(true) ? tamam + "Sessize aldım." : tamam + "Medya sesini kapattım. Zil sesi için Rahatsız Etmeyin izni gerekli.";
             case SES_AC:
@@ -83,6 +87,21 @@ final class Yurutucu {
             default:
                 return h + ", bu komutu henüz bilmiyorum.";
         }
+    }
+
+    /** Saat, tarih, pil, internet, medya sesi ve izin durumu. */
+    private String bilgi(String h) {
+        BatteryManager pil = (BatteryManager) c.getSystemService(Context.BATTERY_SERVICE);
+        ConnectivityManager ag = (ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
+        int enCok = Math.max(1, ses.getStreamMaxVolume(AudioManager.STREAM_MUSIC));
+        return h + ", durum şöyle.\n"
+                + "Saat: " + new SimpleDateFormat("HH:mm", Locale.US).format(new Date()) + ".\n"
+                + "Tarih: " + new SimpleDateFormat("d MMMM EEEE", new Locale("tr", "TR")).format(new Date()) + ".\n"
+                + "Pil: yüzde " + pil.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                + (pil.isCharging() ? ", şarj oluyor" : "") + ".\n"
+                + "İnternet: " + (ag.getActiveNetwork() != null ? "bağlı" : "yok") + ".\n"
+                + "Medya sesi: yüzde " + ses.getStreamVolume(AudioManager.STREAM_MUSIC) * 100 / enCok + ".\n"
+                + "Ekran kontrolü: " + (EkranService.acik != null ? "açık" : "kapalı") + ".";
     }
 
     private String ekran(Komut k, String h, String tamam) {

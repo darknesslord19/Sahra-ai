@@ -5,7 +5,9 @@ Telefonda yüzen, Türkçe sesli ve yazılı komut alan robot asistan.
 ## APK
 **Releases** bölümünden en son `Sahra.apk` dosyasını indirin.
 
-Bu bir deneme (debug) APK'sıdır ve her derlemede imzası değişir. Yeni sürümü kurmadan önce eskisini kaldırın.
+APK, `imza/` klasöründeki Android **testkey** ile imzalanır; yeni sürümler eskisinin üstüne kurulur.
+
+Dikkat: testkey herkese açık bir anahtardır, imza APK'nın kimden geldiğini kanıtlamaz. Sahra'yı yalnızca bu deponun Releases bölümünden kurun.
 
 ## İlk kurulum
 1. Mikrofon ve "diğer uygulamaların üstünde göster" izinlerini verin.
