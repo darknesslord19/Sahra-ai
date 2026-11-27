@@ -50,7 +50,16 @@ def ornek():
         l.append(piksel(x - int(en*0.36), y)); time.sleep(0.4)
     return l
 if w is not None: yaz('kenar pikselleri (varsayılan)', ornek())
-dokun('Zümrüt'); yaz('ayar1', ayar())
+def secili(m):
+    n = bul(m); return n.get('selected') if n is not None else None
+def metinler(): return [d.get('text') or '' for d in dugumler()]
+yaz('varsayılan orijinal seçili', secili('Orijinal ışık (varsayılan)'), '| ayar:', ayar() or 'yok')
+for _ in range(2): sh('input swipe 540 1900 540 1100 300'); time.sleep(0.6)
+yaz('orijinalde hız ayarı gizli', not any('Yanıp sönme hızı' in t for t in metinler()))
+for _ in range(3): sh('input swipe 540 1600 540 2000 200'); time.sleep(0.6)
+if bul('Kenar ışığı') is None: sh('input keyevent 4'); time.sleep(1)
+if bul('Orijinal ışık (varsayılan)') is None: bas(); dokun('Kenar ışığı'); time.sleep(3)
+dokun('Zümrüt'); yaz('ayar1', ayar()); yaz('orijinal artık seçili', secili('Orijinal ışık (varsayılan)'))
 dokun('ışık kirmizi'); yaz('ayar2', ayar())
 dokun('ışık yesil'); yaz('ayar3', ayar())
 if w is not None: yaz('kenar pikselleri (kırmızı)', ornek())
@@ -61,6 +70,10 @@ for m in ['Kalp atışı', 'Dönen renkler', 'Nefes', 'Gözler de aynı renkte o
 yaz('ayar5', ayar())
 for _ in range(3): sh('input swipe 540 1900 540 1100 300'); time.sleep(0.6)
 yaz('panel sonu', [d.get('text') for d in dugumler() if d.get('text')][-8:])
+bas()
+if bul('Orijinal ışık (varsayılan)') is None:
+    sh('input keyevent 4'); time.sleep(1); bas(); dokun('Kenar ışığı'); time.sleep(3)
+dokun('Orijinal ışık (varsayılan)'); yaz('orijinale dönüş', secili('Orijinal ışık (varsayılan)'), ayar())
 sh('input keyevent 4'); time.sleep(2); bas()
 sh('input keyevent 3'); time.sleep(8)
 yaz('hizmet sonda', 'SahraService' in sh(f'dumpsys activity services {P}'))

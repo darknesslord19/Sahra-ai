@@ -212,7 +212,7 @@ public class MainActivity extends Activity {
             @Override public void run() { gorunumKarti(); }
         }));
         l.add(new Bolum("Robot", "Kenar ışığı",
-                Isik.sekilAdi(Ayar.al(this).getString("isikSekil", "nefes")), R.drawable.ik_isik, new Runnable() {
+                Isik.sekilAdi(Ayar.al(this).getString("isikSekil", Isik.ORIJINAL)), R.drawable.ik_isik, new Runnable() {
             @Override public void run() { isikKarti(); }
         }));
         l.add(new Bolum("Robot", "Robot davranışı", Davranis.ad(Ayar.davranis(this)), R.drawable.ik_yuz, new Runnable() {
@@ -920,20 +920,29 @@ public class MainActivity extends Activity {
         final TextView[] sekiller = new TextView[Isik.SEKILLER.length];
         final TextView[] daireler = new TextView[Isik.RENKLER.length];
         final TextView sekilAciklama = metin("", 12, SOLUK);
+        final TextView orijinal = metin("Orijinal ışık (varsayılan)", 14, METIN);
+        final LinearLayout ozel = new LinearLayout(this);
+        ozel.setOrientation(LinearLayout.VERTICAL);
         final Runnable boyaSecim = new Runnable() {
             @Override
             public void run() {
                 List<String> secili = Isik.secili(Ayar.al(MainActivity.this).getString("isikRenk", Isik.ILK_RENKLER));
                 String liste = TextUtils.join(",", secili);
-                String sekli = Isik.sekil(Ayar.al(MainActivity.this).getString("isikSekil", "nefes"));
-                for (int i = 0; i < takimlar.length; i++) cipBoya(takimlar[i], Isik.TAKIMLAR[i][1].equals(liste));
+                String sekli = Isik.sekil(Ayar.al(MainActivity.this).getString("isikSekil", Isik.ORIJINAL));
+                boolean ilkHali = sekli.equals(Isik.ORIJINAL);
+                cipBoya(orijinal, ilkHali);
+                ozel.setVisibility(ilkHali ? View.GONE : View.VISIBLE);
+                sekilAciklama.setVisibility(ilkHali ? View.GONE : View.VISIBLE);
+                for (int i = 0; i < takimlar.length; i++) {
+                    cipBoya(takimlar[i], !ilkHali && Isik.TAKIMLAR[i][1].equals(liste));
+                }
                 for (int i = 0; i < sekiller.length; i++) {
                     boolean bu = Isik.SEKILLER[i][0].equals(sekli);
                     cipBoya(sekiller[i], bu);
                     if (bu) sekilAciklama.setText(Isik.SEKILLER[i][2]);
                 }
                 for (int i = 0; i < daireler.length; i++) {
-                    int sira = secili.indexOf(Isik.RENKLER[i][0]);
+                    int sira = ilkHali ? -1 : secili.indexOf(Isik.RENKLER[i][0]);
                     GradientDrawable g = sekil(Color.parseColor(Isik.RENKLER[i][2]), 22, 0);
                     g.setStroke(dp(sira >= 0 ? 3 : 1), sira >= 0 ? 0xFFFFFFFF : 0x40FFFFFF);
                     daireler[i].setBackground(g);
@@ -943,7 +952,17 @@ public class MainActivity extends Activity {
             }
         };
 
-        ekle(kart, metin("Hazır takımlar", 13, VURGU), 8, -2);
+        orijinal.setGravity(Gravity.CENTER);
+        orijinal.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                isikSakla("isikSekil", Isik.ORIJINAL, boyaSecim);
+            }
+        });
+        ekle(kart, orijinal, 6, 46);
+        ekle(kart, metin("İlk hâli: yumuşak yeşil ışık, dinlerken gökkuşağı. Değiştirmek için aşağıdan seçin.", 12, SOLUK), 6, -2);
+
+        ekle(kart, metin("Hazır takımlar", 13, VURGU), 16, -2);
         LinearLayout satir = null;
         for (int i = 0; i < takimlar.length; i++) {
             if (i % 3 == 0) {
@@ -975,7 +994,8 @@ public class MainActivity extends Activity {
                 @Override
                 public void onClick(View v) {
                     String eski = Ayar.al(MainActivity.this).getString("isikRenk", Isik.ILK_RENKLER);
-                    isikSakla("isikRenk", Isik.degistir(eski, kimlik), boyaSecim);
+                    // Orijinalden çıkarken yalnızca dokunulan renkle başlanır
+                    isikSakla("isikRenk", orijinalIsik() ? kimlik : Isik.degistir(eski, kimlik), boyaSecim);
                 }
             };
             hucre.setOnClickListener(sec);
@@ -993,8 +1013,10 @@ public class MainActivity extends Activity {
         }
         satir.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         ekle(kart, sekilAciklama, 8, -2);
-        boyaSecim.run();
-
+        // Hız ve parlaklık ayarları yalnızca kendi ışığınız seçiliyken görünür
+        final LinearLayout panelIcerik = kart;
+        ekle(panelIcerik, ozel, 0, -2);
+        kart = ozel;
         kaydirici("Yanıp sönme hızı", "isikHiz", 0, 100, Isik.ILK_HIZ, "", SahraService.YENILE);
         kaydirici("En parlak hâli", "isikUst", 40, 100, Isik.ILK_UST, "%", SahraService.YENILE);
         kaydirici("En sönük hâli", "isikAlt", 0, 70, Isik.ILK_ALT, "%", SahraService.YENILE);
@@ -1003,6 +1025,12 @@ public class MainActivity extends Activity {
                 "isikGoz", true);
         anahtar("Dinlerken de benim renklerim", "Kapalıyken dinlerken ve konuşurken gökkuşağı yanar.",
                 "isikDinle", false);
+        kart = panelIcerik;
+        boyaSecim.run();
+    }
+
+    private boolean orijinalIsik() {
+        return Isik.sekil(Ayar.al(this).getString("isikSekil", Isik.ORIJINAL)).equals(Isik.ORIJINAL);
     }
 
     private TextView isikCipi(LinearLayout satir, String ad, final String anahtarAdi, final String deger,
@@ -1023,6 +1051,10 @@ public class MainActivity extends Activity {
     }
 
     private void isikSakla(String anahtarAdi, String deger, Runnable sonra) {
+        // Renk ya da takım seçmek orijinal ışıktan "Nefes"e geçirir
+        if (anahtarAdi.equals("isikRenk") && orijinalIsik()) {
+            Ayar.al(this).edit().putString("isikSekil", Isik.SEKILLER[0][0]).apply();
+        }
         Ayar.al(this).edit().putString(anahtarAdi, deger).apply();
         sonra.run();
         onizlemeBoya();

@@ -219,7 +219,9 @@ public class KomutTest {
                 && com.guven.sahra.Isik.secili("").size() == 3);
         denetle("isik4", com.guven.sahra.Isik.saniye(0) == 5.0 && com.guven.sahra.Isik.saniye(500) == 0.8);
         denetle("isik5", com.guven.sahra.Isik.json("mor", "bozuk", 62, 10, 70, 45, true, false).equals(
-                "{\"renkler\":[\"#8b5cf6\"],\"sekil\":\"nefes\",\"sure\":2.4,\"ust\":0.70,\"alt\":0.70,\"yay\":0.45,\"goz\":true,\"dinle\":false}"));
+                "{\"renkler\":[\"#8b5cf6\"],\"sekil\":\"orijinal\",\"sure\":2.4,\"ust\":0.70,\"alt\":0.70,\"yay\":0.45,\"goz\":true,\"dinle\":false}"));
+        denetle("isik6", com.guven.sahra.Isik.sekil(null).equals("orijinal") && com.guven.sahra.Isik.sekil("kalp").equals("kalp")
+                && com.guven.sahra.Isik.sekilAdi("orijinal").equals("Orijinal"));
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

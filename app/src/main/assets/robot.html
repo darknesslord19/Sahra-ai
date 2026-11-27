@@ -164,6 +164,8 @@ function boyaSil(){
   for(var i=0;i<rain.length;i++)rain[i].style.display='';
 }
 function ciz(t){
+  /* orijinal ışık sayfanın kendi stilidir; döngü durur */
+  if(isik.sekil==='orijinal'){boyaSil();calisiyor=false;onceki=0;return}
   requestAnimationFrame(ciz);
   /* pil için saniyede en çok 30 kare */
   if(onceki&&t-onceki<32)return;

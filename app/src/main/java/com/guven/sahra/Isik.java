@@ -24,6 +24,8 @@ public final class Isik {
             {"Zümrüt", "yesil"}, {"Okyanus", "turkuaz,mavi"}, {"Gün batımı", "turuncu,pembe,mor"},
             {"Orman", "yesil,lime,turkuaz"}, {"Gökkuşağı", "kirmizi,turuncu,sari,yesil,turkuaz,mavi,mor"}};
 
+    /** Uygulamanın ilk ışığı (varsayılan): yeşil nefes, dinlerken gökkuşağı. robot.html bunda hiçbir şeyi değiştirmez. */
+    public static final String ORIJINAL = "orijinal";
     public static final String ILK_RENKLER = "yesil,turkuaz,mor";
     public static final int ILK_HIZ = 62, ILK_UST = 100, ILK_ALT = 15, ILK_YAY = 45;
 
@@ -52,11 +54,12 @@ public final class Isik {
     }
 
     public static String sekil(String kimlik) {
-        return sira(SEKILLER, kimlik) >= 0 ? kimlik : SEKILLER[0][0];
+        return sira(SEKILLER, kimlik) >= 0 ? kimlik : ORIJINAL;
     }
 
     public static String sekilAdi(String kimlik) {
-        return SEKILLER[sira(SEKILLER, sekil(kimlik))][1];
+        int i = sira(SEKILLER, kimlik);
+        return i >= 0 ? SEKILLER[i][1] : "Orijinal";
     }
 
     /** Hız kaydırıcısı (0-100) sağa gittikçe hızlanır. En hızlısı 0,8 sn: göz yoran çakma olmaz. */
