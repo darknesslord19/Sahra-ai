@@ -79,9 +79,9 @@ def ekranAl():
 def gorunum(ad):
     """Robot varken ve yokken aynı bölgeyi karşılaştırır; yalnızca oranlar yazılır."""
     for tur in range(2):
-        komut('merhaba', 5); sh('input keyevent 3'); time.sleep(12)
+        komut('merhaba', 5); sh('am start -a android.settings.SETTINGS'); time.sleep(14)
         a = pencere(); var = ekranAl()
-        sh(f'am force-stop {P}'); time.sleep(3); yok = ekranAl()
+        sh(f'am force-stop {P}'); sh('am start -a android.settings.SETTINGS'); time.sleep(5); yok = ekranAl()
         W = a[2] - a[0]; say = {k: [0, 0] for k in ('tum', 'orta', 'kose')}; acik = koyu = degisen = 0
         for y in range(a[1], a[3], 3):
             for x in range(a[0], a[2], 3):
@@ -95,11 +95,10 @@ def gorunum(ad):
             '| değişenlerde açık %%%d koyu %%%d' % (100*acik//max(1, degisen), 100*koyu//max(1, degisen)))
         sh(f'am start -n {P}/.MainActivity'); time.sleep(5)
 gorunum('SAHRA')
-komut('merhaba'); sh('input keyevent 3'); time.sleep(10); adb('logcat', '-c')
-for i in range(3):
-    cevir(); time.sleep(9); kayit('SAHRA çevirme %d' % i)
 sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
 dokun('Robot görünümü'); dokun('Sahra 1 (elli)'); time.sleep(5); sh('input keyevent 4'); time.sleep(2)
 gorunum('SAHRA1')
+komut('merhaba'); sh('input keyevent 3'); time.sleep(10); adb('logcat', '-c')
+cevir(); time.sleep(9); kayit('SAHRA1 çevirme (yeni boyut)')
 yaz('çökme', P in adb('logcat', '-d', '-b', 'crash'))
 for l in adb('logcat', '-d', '-b', 'crash').splitlines()[:25]: yaz('log', l[:250])

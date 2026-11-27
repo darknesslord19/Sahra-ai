@@ -85,7 +85,7 @@ function ciz(dt){
  const d=R.d,I=halkaBul(T,dinle),gr=I.goz||(n.goz==='normal'&&!dinle?d.idle:d.goz);
  yuzCiz(R.ek.c,{t:T,goz:n.goz,kirp:kirpS,bakX:o.bakX+bakX+simdi.basYaw*.8,bakY:o.bakY+bakY,renk:gr,zemin:d.zemin,kose:d.kose,pay:d.pay+.01,halka:I.halka,agiz:S.agiz,konusuyor:S.konusuyor&&!yazi,yazi:yazi,yaziSure:T-yaziBas,yaziBitti:()=>{yazi=''}});
  motor.yukle(R.ek.tex,R.ek.cv);
- const l=I.halka.renkler;motor.ciz(R.kok,renk(l[Math.floor(T*.7)%l.length]).map(v=>v*I.halka.guc*I.guc),9.1)}
+ const l=I.halka.renkler;motor.ciz(R.kok,renk(l[Math.floor(T*.7)%l.length]).map(v=>v*I.halka.guc*I.guc),8.8)}
 
 function kare(z){requestAnimationFrame(kare);
  /* pil için saniyede en çok 30 kare */

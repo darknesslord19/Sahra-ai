@@ -32,7 +32,7 @@ final class Ayar {
 
     /** Sahra 1'de eller gövdenin dışında durduğu için yüzen pencere daha geniştir. */
     static int pencereBoyu(Context c, int boyut) {
-        return sahra1(c) ? Math.round(boyut * 1.35f) : boyut;
+        return sahra1(c) ? Math.round(boyut * 1.55f) : boyut;
     }
 
     /** robot1.html içindeki robotAyar() için ayar metni. */
