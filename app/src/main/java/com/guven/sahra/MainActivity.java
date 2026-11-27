@@ -187,6 +187,13 @@ public class MainActivity extends Activity {
         l.add(new Bolum("Anlama ve ses", "Doğal çevrimiçi ses", durumu("sesNet", false), R.drawable.ik_mikrofon, new Runnable() {
             @Override public void run() { netSesKarti(); }
         }));
+        l.add(new Bolum("Yetenekler", "Beyin ve bellek", durumu("beyinOgren", true), R.drawable.ik_anlama, new Runnable() {
+            @Override public void run() { beyinKarti(); }
+        }));
+        l.add(new Bolum("Yetenekler", "Kayıt bilgilerim",
+                KayitBilgi.kayitli(this).isEmpty() ? "Formları otomatik doldur" : "Kayıtlı", R.drawable.ik_kilit, new Runnable() {
+            @Override public void run() { kayitKarti(); }
+        }));
         l.add(new Bolum("Yetenekler", "Alarm ve hatırlatıcı", durumu("alarm", true), R.drawable.ik_saat, new Runnable() {
             @Override public void run() { alarmKarti(); }
         }));
@@ -907,6 +914,84 @@ public class MainActivity extends Activity {
         kart.addView(gorunumOnizleme, gl);
         ekle(kart, renkSirasi(), 10, -2);
         kaydirici("Boyut", "boyut", 46, 184, 92, " dp", SahraService.YENILE);
+    }
+
+    private void beyinKarti() {
+        aciklama("Sahra son aramayı, çıkan sonuçları ve girdiği siteyi 10 dakika aklında tutar; devamını ona göre anlar. "
+                + "Sonuca girebilmesi için ekran kontrolü açık olmalı.");
+        dikkat(EkranService.acik != null ? "Ekran kontrolü açık." : "Ekran kontrolü kapalı: ana ekrandaki Kurulum bölümünden açın.");
+        soyleyin("Chrome'da Trendyol ara", "Aç gir", "İkinci siteye gir", "Sonraki siteye gir",
+                "Sahibinden sitesine gir", "trendyol nokta com'a gir", "Son siteyi aç", "Ne aramıştık");
+        anahtar("Girdiğim siteleri hatırla",
+                "Adı site adresiyle birebir eşleşenleri öğrenir; sonra aramadan doğrudan açar. Yalnızca telefonda durur. "
+                        + "“Yanlış site” derseniz o kaydı siler.", "beyinOgren", true);
+        List<String> siteler = Bellek.liste(this);
+        ekle(kart, metin(siteler.isEmpty() ? "Henüz öğrenilen site yok." : "Öğrenilen siteler\n" + TextUtils.join("\n", siteler),
+                13, SOLUK), 14, -2);
+        ekle(kart, dugme("Belleği temizle", false, new Runnable() {
+            @Override
+            public void run() {
+                Bellek.temizle(MainActivity.this);
+                panelCiz();
+            }
+        }), 10, 46);
+    }
+
+    private void kayitKarti() {
+        aciklama("Siteye kayıt olurken “formu doldur” deyin. Sahra site adını söyleyip onay ister, tanıdığı boş kutuları "
+                + "doldurur. Kayıt düğmesine siz basarsınız.");
+        dikkat("Onay sorusundaki site adını kontrol edin; sahte sitelere bilgi yazdırmayın. Bilgiler yalnızca bu telefonda "
+                + "durur; yedeğe ve yapay zekâya gitmez. Şifre şifrelenerek saklanır. Banka şifrenizi buraya kaydetmeyin.");
+        final String[][] alanlar = {{"ad", "Ad"}, {"soyad", "Soyad"}, {"eposta", "E-posta (Gmail)"},
+                {"kullanici", "Kullanıcı adı (isteğe bağlı)"}, {"telefon", "Telefon (isteğe bağlı)"}};
+        final int[] turler = {InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS,
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS,
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
+                InputType.TYPE_CLASS_PHONE};
+        final EditText[] kutular = new EditText[alanlar.length];
+        for (int i = 0; i < alanlar.length; i++) {
+            kutular[i] = kutu(alanlar[i][1], KayitBilgi.oku(this, alanlar[i][0]));
+            kutular[i].setInputType(turler[i]);
+            ekle(kart, kutular[i], 10, 46);
+        }
+        final EditText sifre = gizliKutu(KayitBilgi.sifreVar(this) ? "Şifre kayıtlı (değiştirmek için yazın)" : "Şifre");
+        ekle(kart, sifre, 10, 46);
+        final EditText tekrar = gizliKutu("Şifre tekrarı");
+        ekle(kart, tekrar, 10, 46);
+        ekle(kart, dugme("Kaydet", true, new Runnable() {
+            @Override
+            public void run() {
+                String s = sifre.getText().toString();
+                if (!s.equals(tekrar.getText().toString())) {
+                    uyar("Şifre ile tekrarı aynı değil.");
+                    return;
+                }
+                for (int i = 0; i < alanlar.length; i++) {
+                    KayitBilgi.yaz(MainActivity.this, alanlar[i][0], kutular[i].getText().toString());
+                }
+                if (!s.isEmpty() && !KayitBilgi.sifreSakla(MainActivity.this, s)) {
+                    uyar("Şifre güvenli biçimde saklanamadı; kaydedilmedi.");
+                    return;
+                }
+                panelCiz();
+                uyar("Kaydedildi.");
+            }
+        }), 12, 46);
+        ekle(kart, dugme("Kayıt bilgilerimi sil", false, new Runnable() {
+            @Override
+            public void run() {
+                KayitBilgi.sil(MainActivity.this);
+                panelCiz();
+            }
+        }), 10, 46);
+        soyleyin("Formu doldur", "E-postamı yaz (önce kutuya dokunun)", "Şifremi yaz (önce kutuya dokunun)");
+    }
+
+    private EditText gizliKutu(String ipucu) {
+        EditText e = kutu(ipucu, "");
+        e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        return e;
     }
 
     private void isikKarti() {

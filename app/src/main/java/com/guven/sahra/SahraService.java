@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ComponentName;
 import android.content.pm.ResolveInfo;
+import android.provider.Browser;
 import android.speech.tts.Voice;
 import android.text.TextUtils;
 import android.content.Intent;
@@ -16,6 +17,9 @@ import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.net.ConnectivityManager;
+import android.net.Uri;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.app.KeyguardManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -758,7 +762,7 @@ public class SahraService extends Service {
         Ozel ozel = Ozel.bul(Yedek.komutlar(this), cumle);
         if (ozel != null) {
             ozelCalistir(ozel);
-        } else {
+        } else if (!beyinIsle(cumle)) {
             tekKomut(Komut.coz(cumle), null);
         }
     }
@@ -899,6 +903,7 @@ public class SahraService extends Service {
                 break;
             case HAFIZA_SIL:
                 Hafiza.temizle();
+                Beyin.unut();
                 cevap = "Konuştuklarımızı unuttum " + Ayar.hitap(this) + ".";
                 break;
             case BILINMIYOR:
@@ -906,6 +911,20 @@ public class SahraService extends Service {
                     serbestAnla(k);
                     return;
                 }
+                cevap = new Yurutucu(this).uygula(k);
+                break;
+            case FORM_DOLDUR:
+                formDoldur(k.metin);
+                return;
+            case WEB_ARA:
+                Beyin.aramaYapildi(k.metin, System.currentTimeMillis());
+                cevap = new Yurutucu(this).uygula(k);
+                break;
+            case YOUTUBE:
+            case UYGULAMA_AC:
+            case ANA_EKRAN:
+                // Başka yere geçildi: yalnız "aç" artık eski aramayı kastetmez
+                Beyin.unut();
                 cevap = new Yurutucu(this).uygula(k);
                 break;
             default:
@@ -991,6 +1010,7 @@ public class SahraService extends Service {
     }
 
     private void soyle(String metin) {
+        android.util.Log.i("SAHRADBG", "SOZ " + metin.replace('\n', ' '));
         // Balonda hem duyulan komut hem cevap görünür
         goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
         duyulan = "";
@@ -1490,6 +1510,305 @@ public class SahraService extends Service {
                 return true;
             }
         });
+    }
+
+    // ---------- Beyin: bağlam belleği ----------
+
+    /** Devam ya da site cümlesiyse işler ve true döner. */
+    private boolean beyinIsle(String cumle) {
+        long simdi = System.currentTimeMillis();
+        Beyin.Istek i = Beyin.coz(cumle, !Beyin.sonArama(simdi).isEmpty());
+        if (i == null) return false;
+        String h = Ayar.hitap(this);
+        switch (i.tip) {
+            case ADRES:
+                siteAc("https://" + i.ad, h + ", " + i.ad + " açılıyor.");
+                return true;
+            case SON_SITE: {
+                String son = Bellek.sonSite(this);
+                if (son.isEmpty()) soyle(h + ", hatırladığım bir site yok.");
+                else siteAc(son, h + ", " + Beyin.alanAdi(son) + " açılıyor.");
+                return true;
+            }
+            case NE_ARADIK: {
+                String arama = Beyin.sonArama(simdi);
+                String son = Bellek.sonSite(this);
+                String soz = (arama.isEmpty() ? "" : "Son aramamız: " + arama + ". ")
+                        + (son.isEmpty() ? "" : "Son girdiğimiz site: " + Beyin.alanAdi(son) + ".");
+                soyle(soz.isEmpty() ? h + ", aklımda bir arama yok." : h + ". " + soz);
+                return true;
+            }
+            case SITE: {
+                String bilinen = Bellek.site(this, i.ad);
+                if (i.gir && !bilinen.isEmpty()) {
+                    Beyin.aramaYapildi(i.ad, simdi);
+                    Beyin.adHatirla(i.ad);
+                    siteAc(bilinen, h + ", " + Beyin.alanAdi(bilinen) + " açılıyor. Bunu hatırlıyorum.");
+                    return true;
+                }
+                Beyin.aramaYapildi(i.ad, simdi);
+                Beyin.adHatirla(i.ad);
+                String soz = new Yurutucu(this).uygula(Komut.coz("google'da " + i.ad + " ara"));
+                if (!i.gir) {
+                    soyle(soz + " Girmemi isterseniz “aç gir” deyin.");
+                } else if (EkranService.acik == null) {
+                    soyle(ekranIzniGerekli());
+                } else {
+                    goster(i.ad + " aranıyor, sonuca gireceğim…");
+                    duyulan = "";
+                    sonucBekle(komutSirasi, 1, i.ad, 0, "", 2500);
+                }
+                return true;
+            }
+            case SIRADAKI: {
+                // Yanlış site denirse o ad için öğrenilen adres silinir
+                if (!Beyin.hatirlananAd().isEmpty()) Bellek.unutSite(this, Beyin.hatirlananAd());
+                List<String[]> liste = Beyin.saklanan(simdi);
+                int sonraki = Beyin.konum() + 1;
+                if (sonraki < liste.size() && !liste.isEmpty()) {
+                    sonucaGir(liste, sonraki);
+                } else if (!liste.isEmpty()) {
+                    soyle(h + ", gördüğüm başka sonuç kalmadı.");
+                } else {
+                    sonucIste(2, "");
+                }
+                return true;
+            }
+            case ADLI_SONUC:
+                sonucIste(0, i.ad);
+                return true;
+            default:
+                sonucIste(i.sira, "");
+                return true;
+        }
+    }
+
+    private String ekranIzniGerekli() {
+        return Ayar.hitap(this) + ", sonuca girebilmem için Sahra uygulamasından ekran kontrolü iznini açmalısınız.";
+    }
+
+    /** sira 0 ise ve ad boşsa ilk sonuç kastedilir. */
+    private void sonucIste(int sira, String ad) {
+        EkranService e = EkranService.acik;
+        long simdi = System.currentTimeMillis();
+        List<String[]> eski = Beyin.saklanan(simdi);
+        if (e == null) {
+            soyle(ekranIzniGerekli());
+            return;
+        }
+        String cubuk = e.adresCubugu();
+        { StringBuilder g = new StringBuilder(); for (String[] b : Beyin.sonuclar(e.baglantilar())) g.append(Beyin.alanAdi(b[0])).append(' ');
+          android.util.Log.i("SAHRADBG", "EKRAN paket=" + e.ondeki() + " cubuk=" + cubuk + " ham=" + e.baglantilar().size() + " sonuc=" + g); }
+        if (Beyin.aramaAdresi(cubuk)) {
+            List<String[]> ekranda = Beyin.sonuclar(e.baglantilar());
+            if (!ekranda.isEmpty()) {
+                Beyin.sonuclariSakla(ekranda, simdi);
+                secVeGir(ekranda, sira, ad);
+                return;
+            }
+        }
+        // Artık bir sitenin içindeyiz: sıra ya da ad söylendiyse hatırlanan sonuçlardan seçilir
+        if (!eski.isEmpty()) {
+            if (sira > 0 || !ad.isEmpty()) {
+                secVeGir(eski, sira, ad);
+            } else if (Beyin.konum() >= 0) {
+                soyle(Ayar.hitap(this) + ", " + Beyin.alanAdi(eski.get(Beyin.konum())[0])
+                        + " sitesine girdim. Başkası için “sonraki siteye gir” deyin.");
+            } else {
+                secVeGir(eski, 1, "");
+            }
+            return;
+        }
+        String arama = Beyin.sonArama(simdi);
+        if (arama.isEmpty()) {
+            soyle(Ayar.hitap(this) + ", ekranda arama sonucu göremiyorum. Önce ne arayacağımı söyleyin.");
+            return;
+        }
+        new Yurutucu(this).uygula(Komut.coz("google'da " + arama + " ara"));
+        goster("Sonuçlar bekleniyor…");
+        duyulan = "";
+        sonucBekle(komutSirasi, sira, ad, 0, "", 2500);
+    }
+
+    /** Sayfa yüklenirken sonuçları yoklar; ilk bağlantı iki yoklamada aynı kalınca girer. */
+    private void sonucBekle(final int bu, final int sira, final String ad, final int deneme,
+                            final String onceki, long gecikme) {
+        ana.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                EkranService e = EkranService.acik;
+                if (!calisiyor || bu != komutSirasi || e == null) return;
+                List<String[]> liste = Beyin.aramaAdresi(e.adresCubugu())
+                        ? Beyin.sonuclar(e.baglantilar()) : new ArrayList<String[]>();
+                String ilk = liste.isEmpty() ? "" : liste.get(0)[0];
+                { StringBuilder g = new StringBuilder(); for (String[] b : liste) g.append(Beyin.alanAdi(b[0])).append(' ');
+                  android.util.Log.i("SAHRADBG", "YOKLA " + deneme + " cubuk=" + e.adresCubugu() + " ham=" + e.baglantilar().size() + " sonuc=" + g); }
+                if (!ilk.isEmpty() && (ilk.equals(onceki) || deneme >= 9)) {
+                    Beyin.sonuclariSakla(liste, System.currentTimeMillis());
+                    // Site adıyla gelindiyse adı eşleşen sonuç, yoksa ilki seçilir
+                    String hatirlanan = Beyin.hatirlananAd();
+                    if (sira == 1 && !ad.isEmpty() && ad.equals(hatirlanan)) {
+                        sonucaGir(liste, Math.max(0, Beyin.bul(liste, ad)));
+                    } else {
+                        secVeGir(liste, sira, ad);
+                    }
+                } else if (deneme >= 9) {
+                    soyle(Ayar.hitap(SahraService.this) + ", sonuç bağlantılarını göremedim. Chrome'da sonuçlar açıkken “aç gir” deyin.");
+                } else {
+                    sonucBekle(bu, sira, ad, deneme + 1, ilk, 1000);
+                }
+            }
+        }, gecikme);
+    }
+
+    private void secVeGir(List<String[]> liste, int sira, String ad) {
+        int yer = ad.isEmpty() ? Math.max(1, sira) - 1 : Beyin.bul(liste, ad);
+        if (yer < 0) {
+            soyle(Ayar.hitap(this) + ", sonuçlarda " + ad + " bulamadım.");
+        } else if (yer >= liste.size()) {
+            soyle(Ayar.hitap(this) + ", yalnızca " + liste.size() + " sonuç görebiliyorum.");
+        } else {
+            sonucaGir(liste, yer);
+        }
+    }
+
+    private void sonucaGir(List<String[]> liste, int yer) {
+        String adres = liste.get(yer)[0];
+        Beyin.girildi(yer, System.currentTimeMillis());
+        String ad = Beyin.hatirlananAd();
+        if (!ad.isEmpty()) Bellek.ogren(this, ad, adres);
+        siteAc(adres, Ayar.hitap(this) + ", " + Beyin.alanAdi(adres) + " sitesine giriyorum.");
+    }
+
+    private void siteAc(String adres, String soz) {
+        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(adres)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Chrome aynı sekmede açsın, her seferinde yeni sekme birikmesin
+                .putExtra(Browser.EXTRA_APPLICATION_ID, "com.android.chrome");
+        try {
+            try {
+                startActivity(new Intent(i).setPackage("com.android.chrome"));
+            } catch (RuntimeException e) {
+                startActivity(i);
+            }
+            Bellek.sonSite(this, adres);
+            soyle(soz);
+        } catch (RuntimeException e) {
+            soyle(Ayar.hitap(this) + ", tarayıcıyı açamadım.");
+        }
+    }
+
+    // ---------- Kayıt formu ----------
+
+    /** Formun açık olduğu yer: tarayıcıda site adı, uygulamada uygulama adı. Bilinemiyorsa boş. */
+    private String formYeri(EkranService e) {
+        String paket = e.ondeki();
+        if (paket.equals("com.android.chrome")) {
+            String cubuk = e.adresCubugu();
+            return cubuk.contains(" ") ? "" : Beyin.alanAdi(cubuk);
+        }
+        try {
+            return getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(paket, 0)) + " uygulaması";
+        } catch (PackageManager.NameNotFoundException x) {
+            return "";
+        }
+    }
+
+    /** Onaylanan yer hâlâ öndeyse ve ekran kilitli değilse true. */
+    private boolean ayniYer(EkranService e, String paket, String yer) {
+        KeyguardManager kilit = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+        return e != null && !kilit.isKeyguardLocked() && e.ondeki().equals(paket) && formYeri(e).equals(yer);
+    }
+
+    /** alanAdi boşsa görünen bütün kayıt kutuları, değilse yalnızca dokunulan kutu doldurulur. */
+    private void formDoldur(String alanAdi) {
+        final String h = Ayar.hitap(this);
+        final EkranService e = EkranService.acik;
+        if (e == null) {
+            soyle(h + ", form doldurmak için Sahra uygulamasından ekran kontrolü iznini açmalısınız.");
+            return;
+        }
+        if (((KeyguardManager) getSystemService(KEYGUARD_SERVICE)).isKeyguardLocked()) {
+            soyle(h + ", telefon kilitliyken kayıt bilgisi yazmam.");
+            return;
+        }
+        final String paket = e.ondeki();
+        if (paket.isEmpty() || paket.equals(getPackageName())) {
+            soyle(h + ", önce doldurulacak formu açın, sonra “formu doldur” deyin.");
+            return;
+        }
+        final String yer = formYeri(e);
+        if (yer.isEmpty()) {
+            soyle(h + ", sitenin adresini göremiyorum. Sayfayı en üste kaydırıp tekrar söyleyin.");
+            return;
+        }
+        if (Suzgec.bankaUygulamasi(paket, yer)) {
+            soyle(h + ", banka, ödeme ve doğrulama sayfalarını doldurmam.");
+            return;
+        }
+        if (!alanAdi.isEmpty()) {
+            tekKutuDoldur(Form.Alan.valueOf(alanAdi), paket, yer);
+            return;
+        }
+        List<AccessibilityNodeInfo> nodlar = new ArrayList<AccessibilityNodeInfo>();
+        List<Form.Kutu> kutular = new ArrayList<Form.Kutu>();
+        e.formKutulari(nodlar, kutular);
+        for (Form.Kutu k : kutular) android.util.Log.i("SAHRADBG", "KUTU ipucu=[" + k.ipucu + "] onceki=[" + k.onceki + "] parola=" + k.parola + " bos=" + k.bos + " -> " + Form.tur(k));
+        List<Form.Is> isler = Form.plan(kutular, KayitBilgi.kayitli(this));
+        if (isler.isEmpty()) {
+            soyle(KayitBilgi.kayitli(this).isEmpty()
+                    ? h + ", önce Sahra'daki Kayıt bilgilerim bölümünü doldurun."
+                    : h + ", ekranda doldurabileceğim boş kayıt kutusu göremiyorum.");
+            return;
+        }
+        onaySor(yer + " sayfasına şunlar yazılsın mı: " + Form.ozet(isler) + "?", new Runnable() {
+            @Override
+            public void run() {
+                EkranService simdi = EkranService.acik;
+                if (!ayniYer(simdi, paket, yer)) {
+                    soyle(h + ", açık sayfa değişti; güvenlik için hiçbir şey yazmadım.");
+                    return;
+                }
+                // Sayfa onay beklerken değişmiş olabilir; kutular yeniden bulunur
+                List<AccessibilityNodeInfo> n = new ArrayList<AccessibilityNodeInfo>();
+                List<Form.Kutu> k = new ArrayList<Form.Kutu>();
+                simdi.formKutulari(n, k);
+                int yazilan = 0;
+                List<Form.Is> yeni = Form.plan(k, KayitBilgi.kayitli(SahraService.this));
+                for (Form.Is i : yeni) {
+                    String deger = KayitBilgi.deger(SahraService.this, i.alan);
+                    if (!deger.isEmpty() && simdi.doldur(n.get(i.sira), deger)) yazilan++;
+                }
+                soyle(yazilan == 0 ? h + ", kutulara yazamadım."
+                        : h + ", " + yazilan + " kutuyu doldurdum. Kontrol edin; kayıt düğmesine siz basın. "
+                        + "Aşağıda kutu kaldıysa kaydırıp tekrar “formu doldur” deyin.");
+            }
+        });
+    }
+
+    private void tekKutuDoldur(final Form.Alan alan, final String paket, final String yer) {
+        final String h = Ayar.hitap(this);
+        if (KayitBilgi.deger(this, alan).isEmpty()) {
+            soyle(h + ", " + Form.ad(alan) + " bilgisi Kayıt bilgilerim bölümünde yok.");
+            return;
+        }
+        final Runnable yaz = new Runnable() {
+            @Override
+            public void run() {
+                EkranService e = EkranService.acik;
+                AccessibilityNodeInfo n = ayniYer(e, paket, yer) ? e.odakKutusu() : null;
+                if (n == null) {
+                    soyle(h + ", önce yazılacak kutuya dokunun.");
+                } else if (n.isPassword() != (alan == Form.Alan.SIFRE)) {
+                    // Şifre görünen bir kutuya, başka bilgi de şifre kutusuna yazılmaz
+                    soyle(h + ", dokunduğunuz kutu bunun için uygun değil.");
+                } else {
+                    soyle(e.doldur(n, KayitBilgi.deger(SahraService.this, alan))
+                            ? h + ", yazdım." : h + ", kutuya yazamadım.");
+                }
+            }
+        };
+        if (alan == Form.Alan.SIFRE) onaySor(yer + " sayfasında dokunduğunuz kutuya şifreniz yazılsın mı?", yaz);
+        else yaz.run();
     }
 
     // ---------- Serbest cümle ----------

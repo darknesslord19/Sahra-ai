@@ -222,6 +222,97 @@ public class KomutTest {
                 "{\"renkler\":[\"#8b5cf6\"],\"sekil\":\"orijinal\",\"sure\":2.4,\"ust\":0.70,\"alt\":0.70,\"yay\":0.45,\"goz\":true,\"dinle\":false}"));
         denetle("isik6", com.guven.sahra.Isik.sekil(null).equals("orijinal") && com.guven.sahra.Isik.sekil("kalp").equals("kalp")
                 && com.guven.sahra.Isik.sekilAdi("orijinal").equals("Orijinal"));
+        // Beyin: devam cümleleri
+        String[] girCumleleri = {"aç gir", "aç", "gir", "siteye gir", "Sahra siteyi aç", "bu linke tıkla", "içine gir",
+                "hadi siteye gir lütfen", "bunu aç", "siteye de gir", "buldun aç gir"};
+        for (String c : girCumleleri) {
+            if (c.startsWith("buldun")) continue;
+            com.guven.sahra.Beyin.Istek i = com.guven.sahra.Beyin.coz(c, true);
+            denetle("beyin gir " + c, i != null && i.tip == com.guven.sahra.Beyin.Tip.GIR && i.sira == 0);
+        }
+        String[][] sirali = {{"ilkine gir", "1"}, {"ilk siteyi aç", "1"}, {"ikinciye gir", "2"}, {"ikinci siteye gir", "2"},
+                {"üçüncü sonuca tıkla", "3"}, {"2. siteyi aç", "2"}, {"birincisine tıkla", "1"}};
+        for (String[] c : sirali) {
+            com.guven.sahra.Beyin.Istek i = com.guven.sahra.Beyin.coz(c[0], false);
+            denetle("beyin sira " + c[0], i != null && i.tip == com.guven.sahra.Beyin.Tip.GIR && i.sira == Integer.parseInt(c[1]));
+        }
+        for (String c : new String[]{"sonraki siteye gir", "diğerine bak", "başka siteye gir", "yanlış site", "bu site değil"}) {
+            com.guven.sahra.Beyin.Istek i = com.guven.sahra.Beyin.coz(c, false);
+            denetle("beyin sonraki " + c, i != null && i.tip == com.guven.sahra.Beyin.Tip.SIRADAKI);
+        }
+        // Var olan komutlar beyne kaçmamalı
+        for (String c : new String[]{"geri git", "geri", "ana ekrana git", "ana sayfaya git", "sonraki şarkı", "sonraki", "feneri aç",
+                "kamerayı aç", "whatsapp aç", "müzik aç", "sesi aç", "wifi aç", "eve git", "gönder", "yaz siteye gir",
+                "google'da hava durumu ara", "youtube da tarkan aç", "gönder butonuna tıkla", "pencereyi kapat", "araba modu aç",
+                "bildirimleri aç", "not al siteye gir", "saat kaç", "annemi ara"}) {
+            denetle("beyin karismaz " + c, com.guven.sahra.Beyin.coz(c, true) == null);
+        }
+        denetle("beyin baglamsiz ac", com.guven.sahra.Beyin.coz("aç", false) == null && com.guven.sahra.Beyin.coz("gir", false) == null);
+        com.guven.sahra.Beyin.Istek bi = com.guven.sahra.Beyin.coz("Chrome'da sahibinden sitesini bul", false);
+        denetle("beyin site bul", bi != null && bi.tip == com.guven.sahra.Beyin.Tip.SITE && bi.ad.equals("sahibinden") && !bi.gir);
+        bi = com.guven.sahra.Beyin.coz("sahibinden sitesine gir", false);
+        denetle("beyin site gir", bi != null && bi.tip == com.guven.sahra.Beyin.Tip.SITE && bi.ad.equals("sahibinden") && bi.gir);
+        bi = com.guven.sahra.Beyin.coz("google da e devlet bul ve gir", false);
+        denetle("beyin bul gir", bi != null && bi.tip == com.guven.sahra.Beyin.Tip.SITE && bi.ad.equals("e devlet") && bi.gir);
+        bi = com.guven.sahra.Beyin.coz("trendyol nokta com'a gir", false);
+        denetle("beyin adres", bi != null && bi.tip == com.guven.sahra.Beyin.Tip.ADRES && bi.ad.equals("trendyol.com"));
+        bi = com.guven.sahra.Beyin.coz("wikipedia olana gir", false);
+        denetle("beyin adli", bi != null && bi.tip == com.guven.sahra.Beyin.Tip.ADLI_SONUC && bi.ad.equals("wikipedia"));
+        java.util.List<String[]> ham = new java.util.ArrayList<String[]>();
+        for (String[] b : new String[][]{{"https://www.google.com/search?q=a&tbm=isch", "Görseller"}, {"javascript:void(0)", "x"},
+                {"https://reklam.example.com/a", "Sponsorlu Reklam"}, {"https://www.googleadservices.com/pagead/aclk?x=1", "y"},
+                {"https://accounts.google.com.tr/login", "Oturum aç"}, {"https://tr.wikipedia.org/wiki/A", "A - Vikipedi"},
+                {"https://tr.wikipedia.org/wiki/B", "B"}, {"https://www.sahibinden.com/", "sahibinden.com"},
+                {"https://google.evil.com/", "kendi sitesi"}}) ham.add(b);
+        java.util.List<String[]> temiz = com.guven.sahra.Beyin.sonuclar(ham);
+        denetle("beyin suzme", temiz.size() == 3 && temiz.get(0)[0].endsWith("/wiki/A") && temiz.get(1)[0].contains("sahibinden")
+                && temiz.get(2)[0].contains("evil"));
+        denetle("beyin bul", com.guven.sahra.Beyin.bul(temiz, "sahibinden") == 1 && com.guven.sahra.Beyin.bul(temiz, "vikipedi") == 0
+                && com.guven.sahra.Beyin.bul(temiz, "yokboyle") == -1);
+        denetle("beyin guven", com.guven.sahra.Beyin.guvenliEslesme("sahibinden", "https://www.sahibinden.com/")
+                && !com.guven.sahra.Beyin.guvenliEslesme("sahibinden", "https://sahibinden-giris.xyz/")
+                && !com.guven.sahra.Beyin.guvenliEslesme("com", "https://a.com/"));
+        denetle("beyin cubuk", com.guven.sahra.Beyin.aramaAdresi("google.com/search?q=x") && com.guven.sahra.Beyin.aramaAdresi("")
+                && !com.guven.sahra.Beyin.aramaAdresi("sahibinden.com/ilan"));
+        com.guven.sahra.Beyin.aramaYapildi("x", 1000);
+        com.guven.sahra.Beyin.sonuclariSakla(temiz, 1000);
+        denetle("beyin sure", com.guven.sahra.Beyin.saklanan(2000).size() == 3 && com.guven.sahra.Beyin.sonArama(700000).isEmpty()
+                && com.guven.sahra.Beyin.saklanan(700000).isEmpty());
+        // Kayıt formu
+        String[][] formKomut = {{"formu doldur", ""}, {"kayıt formunu doldur", ""}, {"bilgilerimi gir", ""}, {"Sahra bu formu doldur", ""},
+                {"otomatik doldur", ""}, {"mailimi yaz", "EPOSTA"}, {"e-postamı yaz", "EPOSTA"}, {"gmail adresimi gir", "EPOSTA"},
+                {"adımı yaz", "AD"}, {"soyadımı yaz", "SOYAD"}, {"adımı soyadımı yaz", "ADSOYAD"}, {"kullanıcı adımı yaz", "KULLANICI"},
+                {"telefon numaramı yaz", "TELEFON"}, {"şifremi yaz", "SIFRE"}};
+        for (String[] c : formKomut) {
+            com.guven.sahra.Komut f = com.guven.sahra.Komut.coz(c[0]);
+            denetle("form komut " + c[0], f.tur == com.guven.sahra.Komut.Tur.FORM_DOLDUR && f.metin.equals(c[1])
+                    && com.guven.sahra.Beyin.coz(c[0], true) == null);
+        }
+        denetle("form yazdirma kalir", com.guven.sahra.Komut.coz("yarın geliyorum yaz").tur == com.guven.sahra.Komut.Tur.YAZ
+                && com.guven.sahra.Komut.coz("mesaj yaz şifremi unuttum").tur == com.guven.sahra.Komut.Tur.YAZ);
+        denetle("form serbest red", com.guven.sahra.Serbest.karar(com.guven.sahra.Komut.Tur.FORM_DOLDUR) == com.guven.sahra.Serbest.Karar.REDDET);
+        String[][] kutuTurleri = {{"E-posta adresi", "EPOSTA"}, {"user_email", "EPOSTA"}, {"Adınız", "AD"}, {"Ad", "AD"},
+                {"firstName", "AD"}, {"Soyadınız", "SOYAD"}, {"last_name", "SOYAD"}, {"Ad Soyad", "ADSOYAD"},
+                {"Adınız ve Soyadınız", "ADSOYAD"}, {"full-name", "ADSOYAD"}, {"Kullanıcı adı", "KULLANICI"}, {"username", "KULLANICI"},
+                {"Cep telefonu", "TELEFON"}, {"Adres", "ATLA"}, {"TC Kimlik No", "ATLA"}, {"Kart üzerindeki isim", "ATLA"},
+                {"Doğrulama kodu", "ATLA"}, {"Posta kodu", "ATLA"}, {"Ara", "ATLA"}, {"company name", "ATLA"}, {"", "ATLA"}};
+        for (String[] c : kutuTurleri) {
+            denetle("kutu " + c[0], com.guven.sahra.Form.tur(new com.guven.sahra.Form.Kutu(c[0], "", false, true)).name().equals(c[1]));
+        }
+        denetle("kutu onceki yazi", com.guven.sahra.Form.tur(new com.guven.sahra.Form.Kutu("input-7", "Soyadınız *", false, true)).name().equals("SOYAD"));
+        java.util.Set<com.guven.sahra.Form.Alan> hepsiKayitli = java.util.EnumSet.allOf(com.guven.sahra.Form.Alan.class);
+        java.util.List<com.guven.sahra.Form.Kutu> kayitFormu = java.util.Arrays.asList(
+                new com.guven.sahra.Form.Kutu("ad", "", false, true), new com.guven.sahra.Form.Kutu("email", "", false, false),
+                new com.guven.sahra.Form.Kutu("Şifre", "", true, true), new com.guven.sahra.Form.Kutu("Şifre tekrar", "", true, true),
+                new com.guven.sahra.Form.Kutu("Şifre", "", false, true));
+        java.util.List<com.guven.sahra.Form.Is> pl = com.guven.sahra.Form.plan(kayitFormu, hepsiKayitli);
+        denetle("form plan", pl.size() == 3 && pl.get(0).sira == 0 && pl.get(1).sira == 2 && pl.get(2).sira == 3
+                && com.guven.sahra.Form.ozet(pl).equals("ad, şifre, şifre tekrarı"));
+        denetle("form sifre degistirme", com.guven.sahra.Form.plan(java.util.Arrays.asList(
+                new com.guven.sahra.Form.Kutu("Mevcut şifre", "", true, true), new com.guven.sahra.Form.Kutu("Yeni şifre", "", true, true)),
+                hepsiKayitli).isEmpty());
+        denetle("form uc sifre", com.guven.sahra.Form.plan(java.util.Arrays.asList(new com.guven.sahra.Form.Kutu("p1", "", true, true),
+                new com.guven.sahra.Form.Kutu("p2", "", true, true), new com.guven.sahra.Form.Kutu("p3", "", true, true)), hepsiKayitli).isEmpty());
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

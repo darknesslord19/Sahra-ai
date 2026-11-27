@@ -13,7 +13,7 @@ public final class Komut {
         GERI, ANA_EKRAN, SON_UYGULAMALAR, BILDIRIMLER, ASAGI, YUKARI,
         BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, OKUMA_DUR, HAVA, KUR, EFEKT, GUZEL_SOZ, YAPAY_SORU, KAPAN,
         ALARM, ZAMANLAYICI, HATIRLAT, ARA, FENER, KAMERA, PARLAKLIK, YOL_TARIFI, AYAR_AC,
-        OZET, BILDIRIM_OKU, NOT_AL, NOT_OKU, NOT_SIL, CEVIR, ARABA, HAFIZA_SIL, BILINMIYOR
+        OZET, BILDIRIM_OKU, NOT_AL, NOT_OKU, NOT_SIL, CEVIR, ARABA, HAFIZA_SIL, FORM_DOLDUR, BILINMIYOR
     }
 
     public final Tur tur;
@@ -96,6 +96,22 @@ public final class Komut {
         }
         m = Pattern.compile("^(" + DILLER + ")(?:ye|ya) cevir$").matcher(s);
         if (m.find()) return ceviri(m.group(1), "");
+
+        // Kayıt bilgileri: "mailimi yaz" sözcüğü sözcüğüne yazdırma sayılmasın diye yazdırmadan öncedir
+        if (s.matches("(?:bu )?(?:(?:kayit )?formu(?:nu)?(?: otomatik)?|(?:kayit )?bilgilerimi|bilgileri|otomatik) (?:doldur|gir|yaz)(?:ur musun| bana)?|kayit bilgilerimle doldur|otomatik doldur")) {
+            return new Komut(Tur.FORM_DOLDUR, "");
+        }
+        m = Pattern.compile("^(e[- ]?postami|e[- ]?posta adresimi|mailimi|mail adresimi|gmailimi|gmail adresimi|adimi soyadimi|ad soyadimi|adimi|ismimi|soyadimi|soy ?ismimi|telefonumu|telefon numarami|numarami|kullanici adimi|sifremi|parolami) (?:yaz|gir|doldur)$").matcher(s);
+        if (m.find()) {
+            String a = m.group(1);
+            Form.Alan alan = a.contains("posta") || a.contains("mail") ? Form.Alan.EPOSTA
+                    : a.startsWith("kullanici") ? Form.Alan.KULLANICI
+                    : a.startsWith("sifre") || a.startsWith("parola") ? Form.Alan.SIFRE
+                    : a.contains("telefon") || a.startsWith("numara") ? Form.Alan.TELEFON
+                    : a.contains(" soyad") ? Form.Alan.ADSOYAD
+                    : a.startsWith("soy") ? Form.Alan.SOYAD : Form.Alan.AD;
+            return new Komut(Tur.FORM_DOLDUR, alan.name());
+        }
 
         // Yazdırma en önde: yazılacak metnin içindeki sözcükler komut sayılmaz
         m = Pattern.compile("^(?:mesaj yaz|mesaja yaz|sunu yaz|yaz)[ :,]+(.+)$").matcher(s);

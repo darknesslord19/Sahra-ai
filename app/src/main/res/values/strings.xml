@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="erisim_aciklama">Sahra, yalnızca siz komut verdiğinizde ekrandaki yazıları sesli okur, yazı yazar, düğmelere dokunur, kaydırır ve geri gider. Şifre alanlarını okumaz. Ekran içeriğini kaydetmez ve internete göndermez.</string>
+    <string name="erisim_aciklama">Sahra, yalnızca siz komut verdiğinizde ekrandaki yazıları sesli okur, yazı yazar, düğmelere dokunur, kaydırır ve geri gider. Şifre alanlarını okumaz. Şifre alanına yalnızca Kayıt bilgilerim bölümüne kaydettiğiniz şifreyi, siz isteyip onayladığınızda yazar. Ekran içeriğini kaydetmez ve internete göndermez.</string>
 </resources>

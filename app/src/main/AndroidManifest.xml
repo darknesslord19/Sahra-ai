@@ -64,7 +64,7 @@
 
         <service
             android:name=".SahraService"
-            android:exported="false"
+            android:exported="true"
             android:foregroundServiceType="microphone" />
 
         <service

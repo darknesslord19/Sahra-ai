@@ -194,7 +194,6 @@ function ciz(t){
     bot.style.setProperty('--goz-isik',rgba(c,.9));bot.style.setProperty('--goz-hale',rgba(c,.4));
   }
 }
-setInterval(function(){if(isik)console.log('DBG w='+innerWidth+' '+isik.sekil+' '+isik.renkler+' op='+rim.style.opacity+' bg='+rim.style.background.replace(/conic-gradient\(from [0-9.]+deg, /,'').slice(0,110)+' hop='+halo.style.opacity+' cls='+bot.className+' state='+bot.getAttribute('data-state'))},700);
 function robotIsik(a){isik=a;if(!calisiyor){calisiyor=true;requestAnimationFrame(ciz)}}
 function robot(state,color,yeniKip){
   if(state==='active')yaziDurdur();
