@@ -6,7 +6,16 @@ import android.content.SharedPreferences;
 /** Kalıcı ayarlar. */
 final class Ayar {
     static SharedPreferences al(Context c) {
-        return c.getSharedPreferences("sahra", Context.MODE_PRIVATE);
+        SharedPreferences p = c.getSharedPreferences("sahra", Context.MODE_PRIVATE);
+        // komut ayrıştırıcıları Android'e bağlı olmadığından ad onlara buradan aktarılır
+        Isim.ayarla(p.getString("ad", Isim.VARSAYILAN));
+        return p;
+    }
+
+    /** Asistanın adı. */
+    static String ad(Context c) {
+        al(c);
+        return Isim.ad();
     }
 
     static String hitap(Context c) {

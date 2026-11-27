@@ -74,6 +74,7 @@ public class SahraService extends Service {
     private BilgiPenceresi pencere;
     private Efekt efekt;
     private int yaziSirasi;
+    private long sonSozZamani;
     private long sonEfekt = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
     private boolean yenileniyor;
 
@@ -81,13 +82,24 @@ public class SahraService extends Service {
     private final Runnable panoTuru = new Runnable() {
         @Override
         public void run() {
+            ana.removeCallbacks(this);
             ana.postDelayed(this, 14000);
             if (!bosta()) return;
             veriYenile();
             if (!Pano.acik(SahraService.this, "yaziAcik")) return;
-            List<String> l = Pano.yazilar(SahraService.this);
+            long simdi = System.currentTimeMillis();
+            int siklik = Ayar.al(SahraService.this).getInt("sozSiklik", 1);
+            List<String> l = Pano.yazilar(SahraService.this, simdi - sonSozZamani >= Sozler.aralik(siklik));
             if (!l.isEmpty()) {
-                String s = l.get(yaziSirasi++ % l.size());
+                // zamanı gelen söz beklemez; arada diğer bilgiler sırayla döner
+                String s = l.contains(Pano.SOZ_YERI) ? Pano.SOZ_YERI : l.get(yaziSirasi++ % l.size());
+                if (s.equals(Pano.SOZ_YERI)) {
+                    s = Pano.soz(SahraService.this, Sozler.GOZ_SINIRI);
+                    sonSozZamani = simdi;
+                }
+                // uzun yazı yarıda kesilmesin diye sonraki tur geciktirilir
+                ana.removeCallbacks(this);
+                ana.postDelayed(this, Math.max(14000, 5000 + s.length() * 290L));
                 web.evaluateJavascript("window.robotYazi&&robotYazi(" + JSONObject.quote(s) + ")", null);
             }
         }
@@ -112,6 +124,14 @@ public class SahraService extends Service {
             efektKaldir();
         }
     };
+
+    /** "Komik söz söyle" gibi istekler; anahtarı kapalı olsa da adıyla istenen kategori okunur. */
+    private String kategoriSozu(String ad) {
+        if (!SozDepo.var(this)) return "Önce Boştayken gözlerde yazı bölümünden söz dosyasını yükleyin.";
+        int kat = Sozler.kategoriBul(SozDepo.al(this).kategoriler, ad);
+        String s = kat < 0 ? null : SozDepo.sec(this, java.util.Collections.singleton(kat), Sozler.EN_UZUN);
+        return s == null ? "Dosyada bu kategoride söz bulamadım." : Ayar.hitap(this) + ". " + s;
+    }
 
     private boolean bosta() {
         return !konusuyor && !(dinliyor && (elleDinleme || uyandi))
@@ -363,7 +383,7 @@ public class SahraService extends Service {
                 new Intent(this, SahraService.class).setAction(DURDUR), PendingIntent.FLAG_IMMUTABLE);
         Notification b = new Notification.Builder(this, "sahra")
                 .setSmallIcon(R.drawable.ikon)
-                .setContentTitle("Sahra çalışıyor")
+                .setContentTitle(Ayar.ad(this) + " çalışıyor")
                 .setContentText("Robota dokunup komut verin")
                 .setContentIntent(ac)
                 .addAction(new Notification.Action.Builder(null, "Kapat", dur).build())
@@ -830,7 +850,11 @@ public class SahraService extends Service {
                 efektOynat(k.metin);
                 break;
             case GUZEL_SOZ:
-                cevap = Ayar.hitap(this) + ". " + Pano.soz(this);
+                if (k.metin == null || k.metin.isEmpty()) {
+                    cevap = Ayar.hitap(this) + ". " + Pano.soz(this);
+                } else {
+                    cevap = kategoriSozu(k.metin);
+                }
                 break;
             case OKUMA_DUR:
                 sustur();
@@ -1011,7 +1035,7 @@ public class SahraService extends Service {
 
     private void soyle(String metin) {
         // Balonda hem duyulan komut hem cevap görünür
-        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
+        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\n" + Ayar.ad(this) + ": " + metin);
         duyulan = "";
         konus(metin);
     }
@@ -1143,7 +1167,7 @@ public class SahraService extends Service {
     }
 
     private void uzunSoyle(String metin) {
-        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
+        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\n" + Ayar.ad(this) + ": " + metin);
         duyulan = "";
         List<String> parcalar = Sayfa.bol(metin, 350);
         konus(parcalar.get(0));
@@ -1151,7 +1175,7 @@ public class SahraService extends Service {
     }
 
     private void acikSoyle(String metin, boolean paylasilabilir) {
-        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
+        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\n" + Ayar.ad(this) + ": " + metin);
         duyulan = "";
         konus(metin, paylasilabilir);
     }
@@ -1364,7 +1388,7 @@ public class SahraService extends Service {
                             else if (takvim.isEmpty()) o.append("\nBugün için takvimde kayıt yok.");
                             else o.append("\nBugün: ").append(TextUtils.join("; ", takvim)).append('.');
                         }
-                        if (ayar("ssoz", true)) o.append("\nGünün sözü: ").append(Pano.soz(SahraService.this)).append('.');
+                        if (ayar("ssoz", true)) o.append("\nGünün sözü: ").append(Pano.soz(SahraService.this, 200)).append('.');
                         duyulan = istek;
                         uzunSoyle(o.toString());
                     }

@@ -37,11 +37,14 @@ final class Pano {
 
     // ---------- Kayan yazılar ----------
 
+    /** Listede sözün yerini tutar; söz yalnızca gösterileceği anda seçilir, böylece sıra atlamaz. */
+    static final String SOZ_YERI = "\0soz";
+
     /** Sırayla gösterilecek yazılar. Verisi henüz gelmeyen bölümler atlanır. */
-    static List<String> yazilar(Context c) {
+    static List<String> yazilar(Context c, boolean sozZamani) {
         List<String> l = new ArrayList<String>();
         if (acik(c, "havaAcik") && !hava(c).isEmpty()) l.add(hava(c));
-        if (acik(c, "sozAcik")) l.add(soz(c));
+        if (acik(c, "sozAcik") && sozZamani) l.add(SOZ_YERI);
         if (acik(c, "kurAcik") && !kurlar(c).isEmpty()) {
             for (String s : kurlar(c).split("\n")) l.add(s);
         }
@@ -50,11 +53,18 @@ final class Pano {
 
     /** Kullanıcının kendi sözleri varsa yalnızca onlardan, yoksa hazır listeden seçer. */
     static String soz(Context c) {
+        return soz(c, Sozler.EN_UZUN);
+    }
+
+    /** enCok: yüklenen dosyadan seçerken en uzun söz. */
+    static String soz(Context c, int enCok) {
         List<String> kendi = new ArrayList<String>();
         for (String s : Ayar.al(c).getString("kendiSozler", "").split("\n")) {
             if (!s.trim().isEmpty()) kendi.add(s.trim());
         }
         if (!kendi.isEmpty()) return kendi.get((int) (Math.random() * kendi.size()));
+        String dosyadan = SozDepo.sec(c, enCok);
+        if (dosyadan != null) return dosyadan;
         return SOZLER[(int) (Math.random() * SOZLER.length)];
     }
 

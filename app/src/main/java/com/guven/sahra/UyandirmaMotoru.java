@@ -127,7 +127,7 @@ final class UyandirmaMotoru {
             JSONArray sozler = sonuc.optJSONArray("result");
             for (int i = 0; sozler != null && i < sozler.length(); i++) {
                 JSONObject s = sozler.getJSONObject(i);
-                if (s.optString("word").matches("sahra|sahara") && s.optDouble("conf", 0) >= esik) {
+                if (Isim.uyandiran(s.optString("word")) && s.optDouble("conf", 0) >= esik) {
                     durdur();
                     olay.duyuldu();
                     return;

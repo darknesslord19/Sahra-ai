@@ -18,6 +18,59 @@ public class KomutTest {
         }
     }
 
+    private static void sozTestleri() {
+        denetle("soz haric", com.guven.sahra.Sozler.haric("Cuma Günü Mesajları ve Durum Sözleri")
+                && com.guven.sahra.Sozler.haric("Anne ve Anneler Günü İçin Sözler")
+                && !com.guven.sahra.Sozler.haric("Dini Sözler") && !com.guven.sahra.Sozler.haric("Komik Sözler"));
+        denetle("soz temizle", com.guven.sahra.Sozler.temizle("  a \r\n  b ").equals("a b")
+                && com.guven.sahra.Sozler.temizle(null).isEmpty()
+                && com.guven.sahra.Sozler.temizle(new String(new char[1001]).replace('\0', 'a')).isEmpty());
+        java.util.List<com.guven.sahra.Sozler.Soz> l = java.util.Arrays.asList(new com.guven.sahra.Sozler.Soz(0, "a"),
+                new com.guven.sahra.Sozler.Soz(1, "b"), new com.guven.sahra.Sozler.Soz(0, "cc"));
+        java.util.List<String> adlar = java.util.Arrays.asList("Komik Sözler", "Atarlı Giderli Sözler");
+        java.util.Set<Integer> acik = com.guven.sahra.Sozler.acikKategoriler(adlar, "Atarlı Giderli Sözler\n");
+        denetle("soz kapali", acik.size() == 1 && acik.contains(0));
+        java.util.List<Integer> u = com.guven.sahra.Sozler.uygunlar(l, acik, 90);
+        denetle("soz uygun", u.equals(java.util.Arrays.asList(0, 2))
+                && com.guven.sahra.Sozler.uygunlar(l, acik, 1).equals(java.util.Arrays.asList(0)));
+        java.util.Random r = new java.util.Random(1);
+        denetle("soz sirayla", com.guven.sahra.Sozler.sec(u, false, -1, r) == 0
+                && com.guven.sahra.Sozler.sec(u, false, 0, r) == 2 && com.guven.sahra.Sozler.sec(u, false, 2, r) == 0);
+        boolean tekrarsiz = true;
+        int son = -1;
+        for (int i = 0; i < 100; i++) {
+            int n = com.guven.sahra.Sozler.sec(u, true, son, r);
+            tekrarsiz &= n != son && u.contains(n);
+            son = n;
+        }
+        denetle("soz karisik", tekrarsiz);
+        denetle("soz bos", com.guven.sahra.Sozler.sec(new java.util.ArrayList<Integer>(), true, 0, r) == -1);
+        denetle("soz kategori", com.guven.sahra.Sozler.kategoriBul(adlar, "komik") == 0
+                && com.guven.sahra.Sozler.kategoriBul(adlar, "giderli") == 1
+                && com.guven.sahra.Sozler.kategoriBul(adlar, "dini") == -1);
+    }
+
+    private static void isimTestleri() {
+        denetle("ad gecerli", "Elif".equals(com.guven.sahra.Isim.gecerli(" elif "))
+                && "İnci".equals(com.guven.sahra.Isim.gecerli("inci")));
+        for (String kotu : new String[]{"", "a", "iki sözcük", "R2D2", "aç", "Tamam", "Ara", "saat", "a.b", "abcdefghijklmnop"}) {
+            denetle("ad gecersiz " + kotu, com.guven.sahra.Isim.gecerli(kotu) == null);
+        }
+        com.guven.sahra.Isim.ayarla("Ayşe");
+        t("Ayşe saat kaç", "SAAT", "");
+        t("hey ayse güzel söz söyle", "GUZEL_SOZ", "");
+        t("sahra komik söz söyle", "GUZEL_SOZ", "komik");
+        denetle("ad cumle", com.guven.sahra.Komut.coz("Ayşe, saat kaç").cumle.equals("saat kaç"));
+        denetle("ad uyandirma", "saat kaç".equals(com.guven.sahra.Uyandirma.komut("Ayşe saat kaç"))
+                && "".equals(com.guven.sahra.Uyandirma.komut("hey ayşe"))
+                && com.guven.sahra.Uyandirma.komut("sahra saat kaç") == null
+                && com.guven.sahra.Uyandirma.komut("ayşegül saat kaç") == null);
+        denetle("ad onay", com.guven.sahra.Onay.coz("evet ayşe") == 1);
+        com.guven.sahra.Isim.ayarla("aç");
+        denetle("ad varsayilana doner", com.guven.sahra.Isim.ad().equals("Sahra")
+                && "saat kaç".equals(com.guven.sahra.Uyandirma.komut("sahara saat kaç")));
+    }
+
     public static void main(String[] a) {
         t("Merhaba Sahra", "SELAM", "");
         t("Sahra", "SELAM", "");
@@ -107,6 +160,11 @@ public class KomutTest {
         t("altın ne kadar", "KUR", "");
         t("döviz kurları", "KUR", "");
         t("güzel bir söz söyle", "GUZEL_SOZ", "");
+        t("komik söz söyle", "GUZEL_SOZ", "komik");
+        t("bana ağır abi sözleri oku", "GUZEL_SOZ", "agir abi");
+        t("kamyon arkası sözü söyle", "GUZEL_SOZ", "kamyon arkasi");
+        t("dini söz", "GUZEL_SOZ", "dini");
+        t("rastgele söz söyle", "GUZEL_SOZ", "");
         t("kar yağdır", "EFEKT", "kar");
         t("yağmur yağdır", "EFEKT", "yagmur");
         t("yaprak dök", "EFEKT", "yaprak");
@@ -325,6 +383,8 @@ public class KomutTest {
                 hepsiKayitli).isEmpty());
         denetle("form uc sifre", com.guven.sahra.Form.plan(java.util.Arrays.asList(new com.guven.sahra.Form.Kutu("p1", "", true, true),
                 new com.guven.sahra.Form.Kutu("p2", "", true, true), new com.guven.sahra.Form.Kutu("p3", "", true, true)), hepsiKayitli).isEmpty());
+        sozTestleri();
+        isimTestleri();
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }
