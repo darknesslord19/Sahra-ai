@@ -2,6 +2,10 @@
 
 Telefonda yüzen, Türkçe sesli ve yazılı komut alan robot asistan.
 
+## Kenar ışığı
+
+**Robot → Kenar ışığı** bölümünden 10 renkten bir ya da birkaçını seçin. Yanma şekli (nefes, yanıp sönme, kalp atışı, dönen renkler, sabit), hız, en parlak ve en sönük hâl, yayılma, göz rengi ve dinlerken kullanılacak renkler ayarlanabilir. Işık sürekli hareket ettiği için sabit ışığa göre biraz daha fazla pil kullanabilir.
+
 ## APK
 **Releases** bölümünden en son `Sahra.apk` dosyasını indirin.
 

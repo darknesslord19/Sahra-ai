@@ -17,6 +17,15 @@ final class Ayar {
         return al(c).getString("renk", "beyaz");
     }
 
+    /** robot.html içindeki robotIsik() için ayar metni. */
+    static String isik(Context c) {
+        android.content.SharedPreferences p = al(c);
+        return Isik.json(p.getString("isikRenk", Isik.ILK_RENKLER), p.getString("isikSekil", "nefes"),
+                p.getInt("isikHiz", Isik.ILK_HIZ), p.getInt("isikUst", Isik.ILK_UST),
+                p.getInt("isikAlt", Isik.ILK_ALT), p.getInt("isikYay", Isik.ILK_YAY),
+                p.getBoolean("isikGoz", true), p.getBoolean("isikDinle", false));
+    }
+
     static String davranis(Context c) {
         return al(c).getString("davranis", "rastgele");
     }

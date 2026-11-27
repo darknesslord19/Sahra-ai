@@ -465,6 +465,7 @@ public class SahraService extends Service {
     private void durum() {
         String d = dinliyor && (elleDinleme || uyandi) || konusuyor ? "active" : "idle";
         web.evaluateJavascript("window.robot&&robot(" + JSONObject.quote(d) + "," + JSONObject.quote(Ayar.renk(this)) + "," + JSONObject.quote(Ayar.davranis(this)) + ")", null);
+        web.evaluateJavascript("window.robotIsik&&robotIsik(" + Ayar.isik(this) + ")", null);
     }
 
     /** Metni balonda gösterir; uzunsa sayfalara bölüp sırayla hepsini gösterir. */

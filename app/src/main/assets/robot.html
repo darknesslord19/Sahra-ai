@@ -36,6 +36,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:transparent;-webkit-ta
 #gbot .eye{position:relative;width:10.5%;height:31%;align-self:center;border-radius:50%;background:radial-gradient(circle at 50% 42%,#fff 0%,#e9f6ff 45%,#8fd8ff 100%);box-shadow:0 0 7px 1px rgba(150,220,255,.9),0 0 16px 3px rgba(110,190,255,.45);transition:transform .12s ease,background .5s,box-shadow .5s,height .3s}
 #gbot[data-state=idle] .eye{background:radial-gradient(circle at 50% 42%,#fff 0%,#e6fff4 45%,#86efc4 100%);box-shadow:0 0 7px 1px rgba(110,240,190,.9),0 0 16px 3px rgba(52,211,153,.4)}
 #gbot[data-state=active] .eye{height:35%}
+/* kenar ışığı gözleri de boyar; ifadelerin kendi renkleri aşağıda olduğu için üstün gelir */
+#gbot.goz .eye{background:radial-gradient(circle at 50% 42%,#fff 0%,var(--goz-orta) 45%,var(--goz-dis) 100%);box-shadow:0 0 7px 1px var(--goz-isik),0 0 16px 3px var(--goz-hale)}
 #gbot.blink .eye{transform:scaleY(.08)}
 /* ifadeler */
 #gbot.ex-happy .eye,#gbot.ex-laugh .eye{height:19%;border-radius:60% 60% 30% 30%;transform:translateY(-8%)}
@@ -141,6 +143,56 @@ function robotYazi(m){
   tkin.style.setProperty('--dur',((tw+vw)/28).toFixed(2)+'s');
   bot.classList.add('tk-on','tk-run');
 }
+/* ---------- kenar ışığı ---------- */
+var rim=bot.querySelector('.rim.green'),halo=bot.querySelector('.halo.green'),kure=bot.querySelector('.sphere');
+var rain=bot.querySelectorAll('.rain'),isik=null,faz=0,aci=0,onceki=0,boyali=false,calisiyor=false;
+function hex(h){return [1,3,5].map(function(i){return parseInt(h.slice(i,i+2),16)})}
+function kar(a,b,t){return a.map(function(v,i){return Math.round(v+(b[i]-v)*t)})}
+function rgba(c,a){return 'rgba('+c+','+(a===undefined?1:a)+')'}
+function yumusak(t){return t*t*(3-2*t)}
+/* 0..1 arası dalga; döngünün başı ve sonu en sönük andır */
+function dalga(s,p){
+  if(s==='sabit')return 1;
+  if(s==='yanson')return p<.15?yumusak(p/.15):p<.55?1:p<.75?1-yumusak((p-.55)/.2):0;
+  if(s==='kalp'){var v=function(m,g){return Math.max(0,1-Math.abs(p-m)/g)};return yumusak(Math.max(v(.14,.13),v(.40,.15)*.85))}
+  return (1-Math.cos(2*Math.PI*p))/2;
+}
+function boyaSil(){
+  if(!boyali)return;boyali=false;
+  [rim,halo].forEach(function(e){e.removeAttribute('style')});
+  kure.style.boxShadow='';bot.classList.remove('goz');
+  for(var i=0;i<rain.length;i++)rain[i].style.display='';
+}
+function ciz(t){
+  requestAnimationFrame(ciz);
+  /* pil için saniyede en çok 30 kare */
+  if(onceki&&t-onceki<32)return;
+  var dt=onceki?Math.min(.1,(t-onceki)/1000):0;onceki=t;
+  faz+=dt/isik.sure;aci=(aci+dt*360/(isik.sure*1.4))%360;
+  var dinliyor=bot.getAttribute('data-state')==='active';
+  if(dinliyor&&!isik.dinle){boyaSil();return}
+  boyali=true;
+  var l=isik.renkler.map(hex),n=l.length,i=Math.floor(faz)%n,p=faz%1,c=l[i],s=isik.sekil;
+  if(s==='sabit'||s==='donen')c=kar(c,l[(i+1)%n],yumusak(p));
+  else if(p>.85)c=kar(c,l[(i+1)%n],yumusak((p-.85)/.15));
+  var k=isik.alt+(isik.ust-isik.alt)*dalga(s,p),y=isik.yay,acik=kar(c,[255,255,255],.45);
+  var halka=function(x){return 'conic-gradient(from '+aci.toFixed(1)+'deg,'+x.concat(x[0]).join(',')+')'};
+  var donen=s==='donen'&&n>1;
+  [rim,halo].forEach(function(e){e.style.animation='none';e.style.transition='none'});
+  rim.style.background=donen?halka(l.map(function(x){return rgba(x)})):halka([rgba(c),rgba(acik),rgba(c),rgba(c),rgba(acik),rgba(c)]);
+  halo.style.background=donen?halka(l.map(function(x){return rgba(x,.75)})):'radial-gradient(closest-side,'+rgba(c,.9)+' 55%,'+rgba(c,0)+')';
+  halo.style.filter='blur('+(3+y*3).toFixed(1)+'px)';halo.style.transform='scale('+(.98+y*.26).toFixed(2)+')';
+  rim.style.opacity=k.toFixed(2);halo.style.opacity=(k*(.35+y*.65)).toFixed(2);
+  /* gövdenin dışına taşan ışıma; pencere kenarında kesilmeyecek ölçüde */
+  kure.style.boxShadow='0 0 '+(2+y*5).toFixed(1)+'px '+(y*2).toFixed(1)+'px '+rgba(c,(k*Math.min(1,y*1.6)).toFixed(2))+',inset 0 -4px 8px rgba(120,130,150,.35),inset 0 3px 5px rgba(255,255,255,.9)';
+  for(var j=0;j<rain.length;j++)rain[j].style.display=dinliyor?'none':'';
+  bot.classList.toggle('goz',isik.goz);
+  if(isik.goz){
+    bot.style.setProperty('--goz-orta',rgba(kar(c,[255,255,255],.82)));bot.style.setProperty('--goz-dis',rgba(acik));
+    bot.style.setProperty('--goz-isik',rgba(c,.9));bot.style.setProperty('--goz-hale',rgba(c,.4));
+  }
+}
+function robotIsik(a){isik=a;if(!calisiyor){calisiyor=true;requestAnimationFrame(ciz)}}
 function robot(state,color,yeniKip){
   if(state==='active')yaziDurdur();
   if(!EX[kip]&&state==='active'&&bot.getAttribute('data-state')!=='active')temizle();
