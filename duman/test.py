@@ -40,7 +40,12 @@ def bas():
     time.sleep(1)
 bas(); dokun("Sahra'yı başlat"); time.sleep(6)
 yaz('hizmet', 'SahraService' in sh(f'dumpsys activity services {P}'))
-dokun('Kenar ışığı'); time.sleep(4)
+for deneme in range(3):
+    bas()
+    if dokun('Kenar ışığı'): break
+    yaz('ekrandakiler', [d.get('text') for d in dugumler() if d.get('text')][:15])
+    sh(f'am force-stop {P}'); sh(f'am start -n {P}/.MainActivity'); time.sleep(8)
+time.sleep(4)
 w = next((d for d in dugumler() if d.get('class') == 'android.webkit.WebView'), None)
 yaz('önizleme', w.get('bounds') if w is not None else None)
 def ornek():
