@@ -71,6 +71,69 @@ public class KomutTest {
                 && "saat kaç".equals(com.guven.sahra.Uyandirma.komut("sahara saat kaç")));
     }
 
+    /** Robotu parmakla gezdirir; algılanan hareketleri sırayla döndürür. */
+    private static String gezdir(com.guven.sahra.Jest j, double[][] yol, long adimMs) {
+        j.basla(yol[0][0], yol[0][1]);
+        StringBuilder b = new StringBuilder();
+        for (int i = 1; i < yol.length; i++) {
+            String o = j.ekle(yol[i][0], yol[i][1], i * adimMs);
+            if (o != null) b.append(o).append(';');
+        }
+        return b.toString();
+    }
+
+    private static double[][] daire(double tur, double yaricap, int adim) {
+        double[][] y = new double[adim + 1][];
+        for (int i = 0; i <= adim; i++) {
+            double a = 2 * Math.PI * tur * i / adim;
+            y[i] = new double[]{500 + yaricap * Math.cos(a), 900 + yaricap * Math.sin(a)};
+        }
+        return y;
+    }
+
+    private static void jestTestleri() {
+        com.guven.sahra.Jest j = new com.guven.sahra.Jest(30);
+        denetle("jest daire", gezdir(j, daire(2.2, 150, 70), 25).equals("don;") && j.tepkiOldu());
+        denetle("jest ters daire", gezdir(j, daire(-2.2, 150, 70), 25).equals("don;"));
+        denetle("jest kucuk daire", gezdir(j, daire(3, 60, 90), 25).equals("don;"));
+        denetle("jest bir tur yetmez", gezdir(j, daire(1, 150, 40), 25).isEmpty() && !j.tepkiOldu());
+        denetle("jest cok yavas", gezdir(j, daire(2.2, 150, 70), 200).isEmpty());
+        double[][] duz = new double[40][];
+        for (int i = 0; i < duz.length; i++) duz[i] = new double[]{100 + i * 20, 300 + i * 8};
+        denetle("jest duz tasima", gezdir(j, duz, 20).isEmpty());
+        double[][] salla = new double[60][];
+        for (int i = 0; i < salla.length; i++) salla[i] = new double[]{500 + (i / 5 % 2 == 0 ? i % 5 : 5 - i % 5) * 40, 600};
+        denetle("jest salla", gezdir(j, salla, 20).equals("salla;"));
+        denetle("jest titreme sayilmaz", gezdir(j, new double[][]{{0, 0}, {5, 2}, {1, 4}, {6, 1}, {0, 0}}, 20).isEmpty());
+        denetle("jest dokunus", j.dokunus(1000) == 1 && j.dokunus(1400) == 2 && j.dokunus(2200) == 3 && j.dokunus(4000) == 1);
+    }
+
+    private static void sahra1Testleri() {
+        String sayfa = "", eski = "";
+        try {
+            sayfa = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get("app/src/main/assets/robot1.html")), "UTF-8");
+            eski = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get("app/src/main/assets/robot.html")), "UTF-8");
+        } catch (java.io.IOException e) {
+            denetle("robot sayfalari okunur", false);
+        }
+        for (String[][] liste : new String[][][]{com.guven.sahra.Sahra1.POZLAR, com.guven.sahra.Sahra1.HAREKETLER}) {
+            for (String[] s : liste) denetle("sahra1 kimlik " + s[0], s[0].equals("oto") || sayfa.contains("['" + s[0] + "',"));
+        }
+        for (String[] d : com.guven.sahra.Davranis.LISTE) {
+            denetle("sahra1 goz " + d[0], d[0].equals("rastgele") || sayfa.contains("['" + d[0] + "',"));
+        }
+        for (String[] h : com.guven.sahra.Sahra1.HAZIR) {
+            denetle("sahra1 hazir " + h[0], !com.guven.sahra.Sahra1.ad(com.guven.sahra.Sahra1.POZLAR, h[1]).equals("Otomatik")
+                    && sayfa.contains("['" + h[3] + "',") && Math.abs(Integer.parseInt(h[4])) <= 180);
+        }
+        denetle("sahra1 json", com.guven.sahra.Sahra1.json("x\"y", "yok", 999, "z", "", false, 5).equals(
+                "{\"poz\":\"oto\",\"hareket\":\"suzul\",\"yon\":180,\"donus\":\"sabit\",\"agiz\":\"oto\",\"eller\":false,\"hiz\":40}"));
+        for (String islev : new String[]{"robot", "robotIsik", "robotYazi", "robotTepki"}) {
+            denetle("iki sayfada " + islev, sayfa.contains("window." + islev + "=function") && eski.contains("function " + islev + "("));
+        }
+        denetle("sahra1 yalniz orijinal", !sayfa.contains("id:'fener'") && !sayfa.contains("id:'kristal'"));
+    }
+
     public static void main(String[] a) {
         t("Merhaba Sahra", "SELAM", "");
         t("Sahra", "SELAM", "");
@@ -385,6 +448,8 @@ public class KomutTest {
                 new com.guven.sahra.Form.Kutu("p2", "", true, true), new com.guven.sahra.Form.Kutu("p3", "", true, true)), hepsiKayitli).isEmpty());
         sozTestleri();
         isimTestleri();
+        jestTestleri();
+        sahra1Testleri();
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

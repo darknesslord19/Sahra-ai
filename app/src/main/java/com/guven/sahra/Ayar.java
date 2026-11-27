@@ -22,6 +22,27 @@ final class Ayar {
         return al(c).getString("hitap", "Güven hocam");
     }
 
+    static boolean sahra1(Context c) {
+        return "sahra1".equals(al(c).getString("model", "sahra"));
+    }
+
+    static String robotSayfasi(Context c) {
+        return "file:///android_asset/" + (sahra1(c) ? "robot1.html" : "robot.html");
+    }
+
+    /** Sahra 1'de eller gövdenin dışında durduğu için yüzen pencere daha geniştir. */
+    static int pencereBoyu(Context c, int boyut) {
+        return sahra1(c) ? Math.round(boyut * 1.55f) : boyut;
+    }
+
+    /** robot1.html içindeki robotAyar() için ayar metni. */
+    static String sahra1Ayari(Context c) {
+        SharedPreferences p = al(c);
+        return Sahra1.json(p.getString("s1Poz", "oto"), p.getString("s1Hareket", "suzul"), p.getInt("s1Yon", 0),
+                p.getString("s1Donus", "sabit"), p.getString("s1Agiz", "oto"), p.getBoolean("s1Eller", true),
+                p.getInt("s1Hiz", 100));
+    }
+
     static String renk(Context c) {
         return al(c).getString("renk", "beyaz");
     }

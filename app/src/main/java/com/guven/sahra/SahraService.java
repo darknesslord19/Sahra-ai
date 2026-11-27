@@ -74,6 +74,9 @@ public class SahraService extends Service {
     private BilgiPenceresi pencere;
     private Efekt efekt;
     private int yaziSirasi;
+    private String sayfaAdresi;
+    private boolean tepkiKonusuyor;
+    private String sonTepki = "";
     private long sonSozZamani;
     private long sonEfekt = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
     private boolean yenileniyor;
@@ -407,9 +410,11 @@ public class SahraService extends Service {
             @Override
             public void onPageFinished(WebView view, String url) {
                 durum();
+                if (url.endsWith("robot1.html")) sahra1Denetle(view);
             }
         });
-        web.loadUrl("file:///android_asset/robot.html");
+        sayfaAdresi = Ayar.robotSayfasi(this);
+        web.loadUrl(sayfaAdresi);
 
         View dokunma = new View(this);
         dokunma.setContentDescription("Sahra robotu");
@@ -418,8 +423,9 @@ public class SahraService extends Service {
         balon.addView(web, new FrameLayout.LayoutParams(-1, -1));
         balon.addView(dokunma, new FrameLayout.LayoutParams(-1, -1));
 
-        int boy = dp(Ayar.boyut(this));
-        balonAyar = pencereAyari(boy, boy, 0);
+        int boy = dp(Ayar.pencereBoyu(this, Ayar.boyut(this)));
+        // Sahra 1'in 3B çizimi için pencerede donanım hızlandırma gerekir
+        balonAyar = pencereAyari(boy, boy, WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED);
         balonAyar.x = Ayar.al(this).getInt("x", 0);
         balonAyar.y = Ayar.al(this).getInt("y", ekran().heightPixels / 4);
         pencereler.addView(balon, balonAyar);
@@ -452,6 +458,37 @@ public class SahraService extends Service {
                 pencereyiOku();
             }
         });
+    }
+
+    /** Telefonda 3B çizim açılamazsa görünmez kalmasın diye Sahra'ya dönülür. */
+    private void sahra1Denetle(final WebView view) {
+        view.evaluateJavascript("window.robotHazir===true", new android.webkit.ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String sonuc) {
+                if (!calisiyor || "true".equals(sonuc) || !Ayar.sahra1(SahraService.this)) return;
+                Ayar.al(SahraService.this).edit().putString("model", "sahra").apply();
+                boyutla(Ayar.boyut(SahraService.this));
+                goster("Bu telefonda Sahra 1'in 3B çizimi açılamadı; Sahra görünümüne döndüm.");
+            }
+        });
+    }
+
+    private void tepki(String ad) {
+        web.evaluateJavascript("window.robotTepki&&robotTepki(" + JSONObject.quote(ad) + ")", null);
+    }
+
+    /** Süren bir okumayı ya da cevap bekleyen soruyu bölmeden tepki cümlesi söyler. */
+    private void tepkiSoyle(String metin) {
+        if (!ayar("tepkiSes", true)) return;
+        boolean soruBekliyor = bekleyenGirdi != null && System.currentTimeMillis() - bekleyenZaman < 45000;
+        // aynı cümle sürerken baştan başlatılmaz
+        if (soruBekliyor || konusuyor && (!tepkiKonusuyor || metin.equals(sonTepki))) return;
+        sonTepki = metin;
+        dinlemeyiBirak();
+        sustur();
+        duyulan = "";
+        soyle(metin);
+        tepkiKonusuyor = true;
     }
 
     /** Balonu robotun üstüne, yer yoksa altına koyar; kuyruk robotu gösterir. */
@@ -490,6 +527,10 @@ public class SahraService extends Service {
         String d = dinliyor && (elleDinleme || uyandi) || konusuyor ? "active" : "idle";
         web.evaluateJavascript("window.robot&&robot(" + JSONObject.quote(d) + "," + JSONObject.quote(Ayar.renk(this)) + "," + JSONObject.quote(Ayar.davranis(this)) + ")", null);
         web.evaluateJavascript("window.robotIsik&&robotIsik(" + Ayar.isik(this) + ")", null);
+        if (Ayar.sahra1(this)) {
+            web.evaluateJavascript("window.robotAyar&&robotAyar(" + Ayar.sahra1Ayari(this) + ")", null);
+            web.evaluateJavascript("window.robotKonus&&robotKonus(" + konusuyor + ")", null);
+        }
     }
 
     /** Metni balonda gösterir; uzunsa sayfalara bölüp sırayla hepsini gösterir. */
@@ -525,8 +566,12 @@ public class SahraService extends Service {
     private void boyutla(int yeni) {
         int b = Math.max(46, Math.min(yeni, 184));
         Ayar.al(this).edit().putInt("boyut", b).apply();
-        balonAyar.width = dp(b);
-        balonAyar.height = dp(b);
+        if (!Ayar.robotSayfasi(this).equals(sayfaAdresi)) {
+            sayfaAdresi = Ayar.robotSayfasi(this);
+            web.loadUrl(sayfaAdresi);
+        }
+        balonAyar.width = dp(Ayar.pencereBoyu(this, b));
+        balonAyar.height = balonAyar.width;
         pencereler.updateViewLayout(balon, balonAyar);
         if (yazi.getVisibility() == View.VISIBLE) balonYerlestir();
         durum();
@@ -539,6 +584,10 @@ public class SahraService extends Service {
         private int ust;
         private boolean tasiniyor;
         private long an;
+        private final Jest jest = new Jest(dp(12));
+        private float oncekiX;
+        private long oncekiAn;
+        private double hiz;
 
         @Override
         public boolean onTouch(View v, MotionEvent e) {
@@ -550,34 +599,95 @@ public class SahraService extends Service {
                     ust = balonAyar.y;
                     tasiniyor = false;
                     an = e.getEventTime();
+                    jest.basla(ilkX, ilkY);
+                    oncekiX = ilkX;
+                    oncekiAn = an;
+                    hiz = 0;
                     break;
                 case MotionEvent.ACTION_MOVE: {
                     float dx = e.getRawX() - ilkX;
                     float dy = e.getRawY() - ilkY;
-                    if (Math.hypot(dx, dy) > ViewConfiguration.get(SahraService.this).getScaledTouchSlop()) tasiniyor = true;
+                    if (!tasiniyor && Math.hypot(dx, dy) > ViewConfiguration.get(SahraService.this).getScaledTouchSlop()) {
+                        tasiniyor = true;
+                        if (ayar("tepkiler", true)) tepki("tut");
+                    }
                     if (tasiniyor) {
                         balonAyar.x = Math.max(0, Math.min(bas + Math.round(dx), ekran().widthPixels - balonAyar.width));
                         balonAyar.y = Math.max(0, Math.min(ust + Math.round(dy), ekran().heightPixels - balonAyar.height));
                         pencereler.updateViewLayout(balon, balonAyar);
                         if (yazi.getVisibility() == View.VISIBLE) balonYerlestir();
+                        suruklemeTepkisi(e);
                     }
                     break;
                 }
                 case MotionEvent.ACTION_UP:
                     if (tasiniyor) {
                         Ayar.al(SahraService.this).edit().putInt("x", balonAyar.x).putInt("y", balonAyar.y).apply();
+                        // çevirme ya da sallama tepkisi sürerken bırakmak onu kesmez
+                        if (ayar("tepkiler", true) && !jest.tepkiOldu()) tepki(hiz > 1.6 ? "firlat" : "birak");
                     } else if (e.getEventTime() - an > 600) {
                         startActivity(new Intent(SahraService.this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                     } else {
-                        sustur();
-                        deneme = 0;
-                        dinle(true);
+                        dokunuldu(jest.dokunus(e.getEventTime()));
                     }
                     break;
                 default:
                     break;
             }
             return true;
+        }
+
+        private void suruklemeTepkisi(MotionEvent e) {
+            if (!ayar("tepkiler", true)) return;
+            long simdi = e.getEventTime();
+            if (simdi - oncekiAn >= 60) {
+                // parmak hızı, milisaniyede dp
+                hiz = (e.getRawX() - oncekiX) / ekran().density / (simdi - oncekiAn);
+                web.evaluateJavascript("window.robotSurukle&&robotSurukle(" + (float) hiz + ")", null);
+                hiz = Math.abs(hiz);
+                oncekiX = e.getRawX();
+                oncekiAn = simdi;
+            }
+            String olay = jest.ekle(e.getRawX(), e.getRawY(), simdi);
+            if (olay == null) return;
+            tepki(olay);
+            if (olay.equals(Jest.DON)) {
+                tepkiSoyle("Başım dönüyor! Acilen hastaneye gitmem gerekebilir.");
+            } else {
+                tepkiSoyle("Sallamayın " + Ayar.hitap(SahraService.this) + ", midem bulanıyor!");
+            }
+        }
+
+        /** Sessiz tepkiden sonra sürekli dinleme kapalı kalmasın; konuşma varsa bitince zaten döner. */
+        private void dinlemeyeDon() {
+            if (surekli() && !konusuyor) {
+                ana.removeCallbacks(yenidenDinle);
+                ana.postDelayed(yenidenDinle, 3000);
+            }
+        }
+
+        /** Tek dokunuş dinler; art arda dokunuşlar tepki verdirir. */
+        private void dokunuldu(int kacinci) {
+            if (kacinci >= 3 && ayar("tepkiler", true)) {
+                if (kacinci < 5) {
+                    dinlemeyiBirak();
+                    tepki("gidik");
+                    if (kacinci == 3) tepkiSoyle("Hihihi, gıdıklanıyorum!");
+                    dinlemeyeDon();
+                } else {
+                    dinlemeyiBirak();
+                    tepki("kizgin");
+                    if (kacinci == 5 || kacinci % 4 == 1) {
+                        tepkiSoyle("Yeter ama " + Ayar.hitap(SahraService.this) + ", beni çok dürttünüz!");
+                    }
+                    dinlemeyeDon();
+                }
+                return;
+            }
+            if (kacinci == 2 && ayar("tepkiler", true)) tepki("kirp");
+            sustur();
+            deneme = 0;
+            dinle(true);
         }
     }
 
@@ -1034,6 +1144,7 @@ public class SahraService extends Service {
     }
 
     private void soyle(String metin) {
+        tepkiKonusuyor = false;
         // Balonda hem duyulan komut hem cevap görünür
         goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\n" + Ayar.ad(this) + ": " + metin);
         duyulan = "";
@@ -1892,6 +2003,7 @@ public class SahraService extends Service {
     private void sustur() {
         komutBekle = false;
         okumaKuyrugu.clear();
+        tepkiKonusuyor = false;
         sonSoz = "";
         bekleyenSoz = null;
         if (konusma != null) konusma.stop();

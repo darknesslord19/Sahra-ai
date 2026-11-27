@@ -27,13 +27,14 @@ final class Yedek {
     static final String DOSYA = "sahra-yedek.json";
     private static final String[] YAZI_AYARLARI = {"hitap", "ad", "renk", "muzik", "ses", "davranis",
             "sehir", "enlem", "boylam", "kendiSozler", "netSes",
-            "isikRenk", "isikSekil", "sozKapali"};
+            "isikRenk", "isikSekil", "sozKapali",
+            "model", "s1Poz", "s1Hareket", "s1Donus", "s1Agiz"};
     private static final String[] SAYI_AYARLARI = {"boyut", "hiz", "ton", "efektDakika", "hsure", "hassas",
-            "isikHiz", "isikUst", "isikAlt", "isikYay", "sozSiklik"};
+            "isikHiz", "isikUst", "isikAlt", "isikYay", "sozSiklik", "s1Yon", "s1Hiz"};
 
     private static final String[] ACMA_AYARLARI = {"surekli", "yaziAcik", "havaAcik", "sozAcik", "kurAcik", "efektAcik",
             "alarm", "shava", "skur", "stak", "ssoz", "sesYedek",
-            "isikGoz", "isikDinle", "sozKarisik"};
+            "isikGoz", "isikDinle", "sozKarisik", "tepkiler", "tepkiSes", "s1Eller"};
 
     // ---------- Komutlar ----------
 
