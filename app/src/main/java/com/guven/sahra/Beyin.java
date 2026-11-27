@@ -133,7 +133,7 @@ public final class Beyin {
     /** Adres çubuğundaki yazı bir arama sayfasını mı gösteriyor? Boşsa bilinmiyor sayılır ve true döner. */
     public static boolean aramaAdresi(String cubuk) {
         String c = cubuk == null ? "" : cubuk.trim().toLowerCase(Locale.ROOT);
-        if (c.isEmpty() || c.contains(" ") || c.contains("arama.html")) return true;
+        if (c.isEmpty() || c.contains(" ")) return true;
         String alan = alanAdi(c);
         return googleSayfasi(alan) || alan.matches("(?:.*\\.)?(?:bing\\.com|duckduckgo\\.com|yandex\\.[a-z.]+|search\\.yahoo\\.com)");
     }

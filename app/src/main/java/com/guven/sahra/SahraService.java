@@ -74,6 +74,7 @@ public class SahraService extends Service {
     private BilgiPenceresi pencere;
     private Efekt efekt;
     private int yaziSirasi;
+    private long sonSozZamani;
     private long sonEfekt = System.currentTimeMillis() - 24 * 60 * 60 * 1000;
     private boolean yenileniyor;
 
@@ -81,13 +82,25 @@ public class SahraService extends Service {
     private final Runnable panoTuru = new Runnable() {
         @Override
         public void run() {
+            ana.removeCallbacks(this);
             ana.postDelayed(this, 14000);
             if (!bosta()) return;
             veriYenile();
             if (!Pano.acik(SahraService.this, "yaziAcik")) return;
-            List<String> l = Pano.yazilar(SahraService.this);
+            long simdi = System.currentTimeMillis();
+            int siklik = Ayar.al(SahraService.this).getInt("sozSiklik", 1);
+            List<String> l = Pano.yazilar(SahraService.this, simdi - sonSozZamani >= Sozler.aralik(siklik));
             if (!l.isEmpty()) {
-                String s = l.get(yaziSirasi++ % l.size());
+                // zamanı gelen söz beklemez; arada diğer bilgiler sırayla döner
+                String s = l.contains(Pano.SOZ_YERI) ? Pano.SOZ_YERI : l.get(yaziSirasi++ % l.size());
+                if (s.equals(Pano.SOZ_YERI)) {
+                    s = Pano.soz(SahraService.this, Sozler.GOZ_SINIRI);
+                    sonSozZamani = simdi;
+                }
+                // uzun yazı yarıda kesilmesin diye sonraki tur geciktirilir
+                ana.removeCallbacks(this);
+                ana.postDelayed(this, Math.max(14000, 5000 + s.length() * 290L));
+                android.util.Log.i("SAHRADBG", "GOZ " + s.length() + " " + s);
                 web.evaluateJavascript("window.robotYazi&&robotYazi(" + JSONObject.quote(s) + ")", null);
             }
         }
@@ -112,6 +125,14 @@ public class SahraService extends Service {
             efektKaldir();
         }
     };
+
+    /** "Komik söz söyle" gibi istekler; anahtarı kapalı olsa da adıyla istenen kategori okunur. */
+    private String kategoriSozu(String ad) {
+        if (!SozDepo.var(this)) return "Önce Boştayken gözlerde yazı bölümünden söz dosyasını yükleyin.";
+        int kat = Sozler.kategoriBul(SozDepo.al(this).kategoriler, ad);
+        String s = kat < 0 ? null : SozDepo.sec(this, java.util.Collections.singleton(kat), Sozler.EN_UZUN);
+        return s == null ? "Dosyada bu kategoride söz bulamadım." : Ayar.hitap(this) + ". " + s;
+    }
 
     private boolean bosta() {
         return !konusuyor && !(dinliyor && (elleDinleme || uyandi))
@@ -830,7 +851,11 @@ public class SahraService extends Service {
                 efektOynat(k.metin);
                 break;
             case GUZEL_SOZ:
-                cevap = Ayar.hitap(this) + ". " + Pano.soz(this);
+                if (k.metin == null || k.metin.isEmpty()) {
+                    cevap = Ayar.hitap(this) + ". " + Pano.soz(this);
+                } else {
+                    cevap = kategoriSozu(k.metin);
+                }
                 break;
             case OKUMA_DUR:
                 sustur();
@@ -1010,7 +1035,7 @@ public class SahraService extends Service {
     }
 
     private void soyle(String metin) {
-        android.util.Log.i("SAHRADBG", "SOZ " + metin.replace('\n', ' '));
+        android.util.Log.i("SAHRADBG", " SOZ " + metin.replace('\n', ' '));
         // Balonda hem duyulan komut hem cevap görünür
         goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
         duyulan = "";
@@ -1365,7 +1390,7 @@ public class SahraService extends Service {
                             else if (takvim.isEmpty()) o.append("\nBugün için takvimde kayıt yok.");
                             else o.append("\nBugün: ").append(TextUtils.join("; ", takvim)).append('.');
                         }
-                        if (ayar("ssoz", true)) o.append("\nGünün sözü: ").append(Pano.soz(SahraService.this)).append('.');
+                        if (ayar("ssoz", true)) o.append("\nGünün sözü: ").append(Pano.soz(SahraService.this, 200)).append('.');
                         duyulan = istek;
                         uzunSoyle(o.toString());
                     }
@@ -1516,10 +1541,6 @@ public class SahraService extends Service {
 
     /** Devam ya da site cümlesiyse işler ve true döner. */
     private boolean beyinIsle(String cumle) {
-        if (cumle.equals("dokum") && EkranService.acik != null) {
-            android.util.Log.i("HAMDBG", "cubuk=" + EkranService.acik.adresCubugu() + " paket=" + EkranService.acik.ondeki());
-            return true;
-        }
         long simdi = System.currentTimeMillis();
         Beyin.Istek i = Beyin.coz(cumle, !Beyin.sonArama(simdi).isEmpty());
         if (i == null) return false;
@@ -1601,8 +1622,6 @@ public class SahraService extends Service {
             return;
         }
         String cubuk = e.adresCubugu();
-        { StringBuilder g = new StringBuilder(); for (String[] b : Beyin.sonuclar(e.baglantilar())) g.append(Beyin.alanAdi(b[0])).append(' ');
-          android.util.Log.i("SAHRADBG", "EKRAN paket=" + e.ondeki() + " cubuk=" + cubuk + " ham=" + e.baglantilar().size() + " sonuc=" + g); }
         if (Beyin.aramaAdresi(cubuk)) {
             List<String[]> ekranda = Beyin.sonuclar(e.baglantilar());
             if (!ekranda.isEmpty()) {
@@ -1645,8 +1664,6 @@ public class SahraService extends Service {
                 List<String[]> liste = Beyin.aramaAdresi(e.adresCubugu())
                         ? Beyin.sonuclar(e.baglantilar()) : new ArrayList<String[]>();
                 String ilk = liste.isEmpty() ? "" : liste.get(0)[0];
-                { StringBuilder g = new StringBuilder(); for (String[] b : liste) g.append(Beyin.alanAdi(b[0])).append(' ');
-                  android.util.Log.i("SAHRADBG", "YOKLA " + deneme + " cubuk=" + e.adresCubugu() + " ham=" + e.baglantilar().size() + " sonuc=" + g); }
                 if (!ilk.isEmpty() && (ilk.equals(onceki) || deneme >= 9)) {
                     Beyin.sonuclariSakla(liste, System.currentTimeMillis());
                     // Site adıyla gelindiyse adı eşleşen sonuç, yoksa ilki seçilir
@@ -1763,7 +1780,6 @@ public class SahraService extends Service {
         List<AccessibilityNodeInfo> nodlar = new ArrayList<AccessibilityNodeInfo>();
         List<Form.Kutu> kutular = new ArrayList<Form.Kutu>();
         e.formKutulari(nodlar, kutular);
-        for (Form.Kutu k : kutular) android.util.Log.i("SAHRADBG", "KUTU ipucu=[" + k.ipucu + "] onceki=[" + k.onceki + "] parola=" + k.parola + " bos=" + k.bos + " -> " + Form.tur(k));
         List<Form.Is> isler = Form.plan(kutular, KayitBilgi.kayitli(this));
         if (isler.isEmpty()) {
             soyle(KayitBilgi.kayitli(this).isEmpty()

@@ -29,6 +29,10 @@ public final class Komut {
     private static final Locale TR = new Locale("tr", "TR");
     static final String[] RENKLER = {"beyaz", "siyah", "mavi", "turkuaz", "yesil", "mor", "pembe", "kirmizi", "altin"};
 
+    private static final Pattern SOZ_KATEGORI = Pattern.compile("(?:bana )?(?:bir )?"
+            + "(komik|romantik|ayrilik|dini|damar|arkadaslik|dostluk|kardeslik|kapak|kamyon arkasi|agir abi|atarli|giderli|aldatma|kizginlik)"
+            + " soz(?:u|ler|leri)?(?: soyle| oku)?");
+
     /** Küçük harfe çevirir; Türkçe harfleri sadeleştirir. Karakter sayısı değişmez. */
     static String sade(String s) {
         char[] c = s.toCharArray();
@@ -137,6 +141,9 @@ public final class Komut {
         if (s.matches("(bugun )?hava( durumu)?( nasil| ne| kac derece| soyle)?|(disarisi )?kac derece")) return k(Tur.HAVA);
         if (s.matches("(bugun )?(dolar|euro|avro|altin|gram altin|doviz|kurlar|doviz kurlari)( ne kadar| kac( tl| lira)?| durumu| kuru| fiyati| soyle)?")) return k(Tur.KUR);
         if (s.matches("(bana )?(guzel )?(bir )?(guzel soz|soz soyle|atasozu)( soyle)?")) return k(Tur.GUZEL_SOZ);
+        Matcher kategori = SOZ_KATEGORI.matcher(s);
+        if (kategori.matches()) return new Komut(Tur.GUZEL_SOZ, kategori.group(1));
+        if (s.matches("(bana )?(rastgele|karisik)( bir)?( guzel)? soz( soyle| oku)?")) return k(Tur.GUZEL_SOZ);
         if (s.matches("kar yagdir")) return new Komut(Tur.EFEKT, "kar");
         if (s.matches("yagmur yagdir")) return new Komut(Tur.EFEKT, "yagmur");
         if (s.matches("yaprak(lari)? (dok|dokul|dokur|yagdir)")) return new Komut(Tur.EFEKT, "yaprak");

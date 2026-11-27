@@ -1,17 +1,8 @@
-import http.server, re, struct, subprocess, threading, time, urllib.parse, xml.etree.ElementTree as ET
+import re, sqlite3, subprocess, time, xml.etree.ElementTree as ET
 P = 'com.guven.sahra'
 def adb(*a): return subprocess.run(['adb', *a], capture_output=True, timeout=180).stdout.decode('utf-8', 'replace')
 def sh(c): return adb('shell', c)
 def yaz(*a): print('SONUC', *a, flush=True)
-GELEN = []
-class S(http.server.SimpleHTTPRequestHandler):
-    def __init__(s, *a, **k): super().__init__(*a, directory='duman/web', **k)
-    def log_message(s, *a): pass
-    def do_GET(s):
-        if s.path.startswith('/log?'):
-            GELEN.append(urllib.parse.unquote(s.path[5:])); s.send_response(204); s.end_headers()
-        else: super().do_GET()
-threading.Thread(target=http.server.ThreadingHTTPServer(('127.0.0.1', 8000), S).serve_forever, daemon=True).start()
 def dugumler():
     for _ in range(3):
         sh('rm -f /sdcard/u.xml; uiautomator dump /sdcard/u.xml')
@@ -20,91 +11,86 @@ def dugumler():
     return []
 def merkez(n):
     a = list(map(int, re.findall(r'\d+', n.get('bounds')))); return (a[0]+a[2])//2, (a[1]+a[3])//2
-def bul(m):
-    for n in dugumler():
+def bul(m, d=None):
+    for n in (d or dugumler()):
         if m in (n.get('text'), n.get('content-desc'), n.get('hint')): return n
-def kaydirip(m):
-    for _ in range(14):
+def kaydirip(m, yon=1):
+    for _ in range(12):
         n = bul(m)
-        if n is not None and merkez(n)[1] < 2100: return n
-        sh('input swipe 540 1800 540 1200 500'); time.sleep(1)
-def dokun(m):
-    n = kaydirip(m)
-    if n is None: yaz('bulunamadı', m); return False
-    x, y = merkez(n); sh(f'input tap {x} {y}'); time.sleep(1.5); return True
+        if n is not None and merkez(n)[1] < 2150: return n
+        sh('input swipe 540 1800 540 1300 600' if yon > 0 else 'input swipe 540 1300 540 1800 600'); time.sleep(1)
+def dokun(m, yon=1):
+    n = kaydirip(m, yon)
+    if n is None:
+        yaz('bulunamadı', m, '| ekranda:', [x.get('text') for x in dugumler() if x.get('text')][:30]); return False
+    x, y = merkez(n); sh(f'input tap {x} {y}'); time.sleep(2); return True
+def metinler(): return [x.get('text') for x in dugumler() if x.get('text')]
+# Uydurma deneme veritabanı (kullanıcının dosyası depoya konmaz)
+db = sqlite3.connect('/tmp/deneme.sqlite')
+db.execute('create table kategoriler(ID integer primary key, KatAdi text, Icon text)')
+db.execute('create table sozler(ID integer unique, KatId integer, Soz text, FavDurum integer, GunSoz integer)')
+for i, a in [(1, 'Komik Sözler'), (2, 'Dini Sözler'), (3, 'Romantik Sözler'), (17, 'Cuma Günü Mesajları'), (18, 'Anne ve Anneler Günü İçin Sözler')]:
+    db.execute('insert into kategoriler values(?,?,?)', (i, a, ''))
+n = 0
+def ekle(k, s):
+    global n; n += 1; db.execute('insert into sozler values(?,?,?,0,0)', (n, k, s))
+for i in range(1, 4):
+    ekle(1, f'KOMIK-{i} çok güzel şaka')
+    ekle(2, f'DINI-{i} güzel öğüt')
+    ekle(3, f'ROMANTIK-{i} sevgi')
+    ekle(17, f'CUMA-{i}'); ekle(18, f'ANNE-{i}')
+ekle(1, 'KOMIK-UZUN ' + 'çok uzun bir söz ' * 8)
+ekle(1, '  KOMIK-1   çok güzel şaka '); ekle(2, '')
+db.commit(); db.close()
 yaz('kurulum', adb('install', '-r', 'app/build/outputs/apk/debug/app-debug.apk').strip())
-adb('reverse', 'tcp:8000', 'tcp:8000')
+adb('push', '/tmp/deneme.sqlite', '/sdcard/Download/deneme.sqlite')
+sh('am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/deneme.sqlite')
 for i in ['RECORD_AUDIO', 'POST_NOTIFICATIONS']: sh(f'pm grant {P} android.permission.{i}')
 sh(f'appops set {P} SYSTEM_ALERT_WINDOW allow')
-sh("echo 'chrome --disable-fre --no-default-browser-check --no-first-run --disable-search-engine-choice-screen' > /data/local/tmp/chrome-command-line")
-sh('am set-debug-app --persistent com.android.chrome')
-sh('pm grant com.android.chrome android.permission.POST_NOTIFICATIONS')
-yaz('chrome', re.findall(r'versionName=(\S+)', sh('dumpsys package com.android.chrome'))[:1])
 sh(f'am start -n {P}/.MainActivity'); time.sleep(8)
-# 1) Kayıt bilgilerini arayüzden kaydet
-if dokun('Kayıt bilgilerim'):
-    time.sleep(2)
-    kutular = lambda: [d for d in dugumler() if d.get('class') == 'android.widget.EditText']
-    degerler = ['Deneme', 'Kisi', 'deneme@example.com', 'denemekisi', '5550000000', 'Gizli-1234', 'Gizli-1234']
-    n = next((d for d in kutular() if 'Ad' in (d.get('hint'), d.get('text'))), None)
-    x, y = merkez(n); sh(f'input tap {x} {y}'); time.sleep(1.5)
-    for i, v in enumerate(degerler):
-        sh(f"input text '{v}'"); time.sleep(0.8)
-        if i < len(degerler) - 1: sh('input keyevent 66'); time.sleep(1.2)
-    if 'mInputShown=true' in sh('dumpsys input_method'): sh('input keyevent 4'); time.sleep(1.5)
-    yaz('kutular', [d.get('text') for d in kutular()])
-    if bul('Kayıt bilgilerim') is None and bul('Kaydet') is None: dokun('Kayıt bilgilerim')
-    dokun('Kaydet'); time.sleep(2)
-    yaz('uyarı', [d.get('text') for d in dugumler() if d.get('text') in ('Kaydedildi.', 'Şifre ile tekrarı aynı değil.')])
-    dokun('Tamam')
-xml = sh(f"run-as {P} cat shared_prefs/kayit.xml")
-yaz('kayıt dosyası alanları', re.findall(r'name="(\w+)">', xml))
-yaz('şifre düz metin olarak YOK', 'Gizli-1234' not in xml and 'name="sifre"' in xml)
-yaz('şifre hiçbir dosyada düz değil', 'Gizli-1234' not in sh(f"run-as {P} sh -c 'cat shared_prefs/*.xml'"))
-sh(f'am force-stop {P}')
-# 2) Ekran kontrolü aç (bundan sonra uiautomator kullanılmaz: erişilebilirliği askıya alır)
-sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
-sh(f'settings put secure enabled_accessibility_services {P}/{P}.EkranService'); sh('settings put secure accessibility_enabled 1'); time.sleep(5)
-yaz('erişilebilirlik', 'EkranService' in sh('dumpsys accessibility'))
-adb('logcat', '-c')
-def komut(c, bekle=8):
+def komut(c, bekle=6):
     adb('logcat', '-c')
     sh(f"am start-foreground-service -n {P}/.SahraService -a komut --es komut \"{c}\""); time.sleep(bekle)
     yaz('>>>', c)
     for l in adb('logcat', '-d').splitlines():
-        if 'SAHRADBG' in l: yaz('   ', l[l.index('SAHRADBG'):][:300])
-def ac(adres, bekle=12):
-    sh(f"am start -a android.intent.action.VIEW -d '{adres}' -p com.android.chrome"); time.sleep(bekle)
-komut('merhaba', 5)
-# 3) Form doldurma
-ac('http://localhost:8000/kayit.html', 25)
-GELEN.clear()
-komut('formu doldur', 9)
-yaz('onaydan önce sayfaya yazılan', GELEN)
-komut('evet', 10)
-son = {}
-for g in GELEN:
-    k, _, v = g.partition('='); son[k] = v
-yaz('sayfadaki değerler', son)
-komut('formu doldur', 7)
-komut('hayır', 4)
-# 4) Sahte arama sayfası: sonuca gir, sonraki, sıra
-komut("google'da deneme ara", 3)
-ac('http://localhost:8000/arama.html', 10)
-komut('aç gir', 14)
-komut('sonraki siteye gir', 12)
-komut('birinci siteye gir', 12)
-komut('en son nereye girdik', 5)
-# 5) Gerçek Google
-def nerede(an):
-    adb('logcat', '-c'); sh(f"am start-foreground-service -n {P}/.SahraService -a komut --es komut dokum"); time.sleep(5)
-    for l in adb('logcat', '-d').splitlines():
-        if 'HAMDBG' in l and 'cubuk=' in l: yaz('   ', an, l[l.index('cubuk='):][:200]); break
-komut('chrome da wikipedia sitesine gir', 40); nerede('wikipedia sitesine gir sonrası')
-komut('sonraki siteye gir', 14); nerede('sonraki sonrası')
-komut('en son nereye girdik', 5)
-komut("chrome da turkiye vikipedi ara", 25)
-komut('aç gir', 25); nerede('aç gir sonrası')
-komut('wikipedia sitesine gir', 14); nerede('öğrenilen site')
+        if 'SAHRADBG' in l and ' SOZ ' in l: yaz('   ', l[l.index(' SOZ '):][:200])
+komut('komik söz söyle')
+sh(f'am start -n {P}/.MainActivity'); time.sleep(3)
+dokun('Boştayken gözlerde yazı')
+dokun('SQLite dosyasından yükle'); time.sleep(4)
+if bul('deneme.sqlite') is None:
+    yaz('seçici ilk ekran', metinler()[:25])
+    dokun('Show roots'); dokun('Downloads'); time.sleep(2)
+dokun('deneme.sqlite'); time.sleep(4)
+yaz('yükleme sonrası', [m for m in metinler() if 'söz' in m.lower()])
+dokun('Sık')
+for k in ['Komik Sözler  (4)', 'Dini Sözler  (3)', 'Romantik Sözler  (3)']:
+    yaz('kategori görünüyor', k, kaydirip(k) is not None)
+yaz('cuma/anne yok', not any('Cuma Günü' in m or 'Anneler' in m and '(' in m for m in metinler()))
+dokun('Dini Sözler', 1)
+def ayar(): return sh(f'run-as {P} cat shared_prefs/{pref}')
+dosyalar = sh(f'run-as {P} ls shared_prefs').split()
+for pref in dosyalar:
+    if 'sozKapali' in sh(f'run-as {P} cat shared_prefs/{pref}'):
+        yaz('ayar', re.findall(r'<(?:string|int|boolean) name="soz\w+"[^<]*(?:</string>)?', ayar()))
+yaz('uygulama dosyaları', sh(f'run-as {P} ls files cache'))
+sh(f'am force-stop {P}'); time.sleep(2)
+for c in ['güzel söz söyle'] * 4 + ['rastgele söz', 'komik söz söyle', 'dini söz', 'romantik söz oku', 'damar söz']:
+    komut(c)
+komut('dur', 3)
+adb('logcat', '-c'); sh(f'am force-stop {P}'); sh(f'am start -n {P}/.MainActivity'); time.sleep(3)
+komut('merhaba', 4)
+sh('input keyevent 3')
+adb('logcat', '-c'); time.sleep(150)
+for l in adb('logcat', '-d', '-v', 'time').splitlines():
+    if 'SAHRADBG' in l and 'GOZ' in l: yaz('   ', l[6:18], l[l.index('GOZ'):][:200])
+# Sırayla modu
+sh(f'am force-stop {P}'); sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
+dokun('Boştayken gözlerde yazı'); dokun('Karışık (rastgele)')
+dokun('Hepsini kapat'); yaz('hepsi kapalı uyarısı', any('Bütün kategoriler kapalı' in m for m in metinler()))
+dokun('Hepsini aç', -1); dokun('Yüklenen sözleri sil')
+yaz('silince', [m for m in metinler() if 'dosya' in m.lower()])
+sh(f'am force-stop {P}')
+komut('komik söz söyle')
 yaz('çökme', P in adb('logcat', '-d', '-b', 'crash'))
 for l in adb('logcat', '-d', '-b', 'crash').splitlines()[:25]: yaz('log', l[:250])

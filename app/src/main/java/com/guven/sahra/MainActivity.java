@@ -62,6 +62,7 @@ public class MainActivity extends Activity {
 
     private static final int FARKLI_KAYDET = 10;
     private static final int GERI_YUKLE = 11;
+    private static final int SOZ_DOSYASI = 12;
 
     private LinearLayout kok;
     private LinearLayout kart;
@@ -95,6 +96,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int istek, int sonuc, Intent veri) {
         if (sonuc != RESULT_OK || veri == null || veri.getData() == null) return;
+        if (istek == SOZ_DOSYASI) {
+            sozYukle(veri.getData());
+            return;
+        }
         try {
             if (istek == FARKLI_KAYDET) {
                 Yedek.dosyayaYaz(this, veri.getData(), Yedek.json(this));
@@ -1220,9 +1225,128 @@ public class MainActivity extends Activity {
             }
         });
         ekle(kart, sozler, 8, -2);
+        sozDosyasiBolumu();
         anahtar("Dolar, euro, altın",
                 "Döviz: TCMB gösterge satış kuru. Altın: uluslararası ons fiyatından hesaplanır; kuyumcu fiyatı farklıdır.",
                 "kurAcik", true);
+    }
+
+    /** Telefondan yüklenen söz dosyası: yükleme, karışık, sıklık ve kategori anahtarları. */
+    private void sozDosyasiBolumu() {
+        final SozDepo.Veri v = SozDepo.al(this);
+        boolean var = !v.sozler.isEmpty();
+        ekle(kart, metin(var ? "Söz dosyası: " + v.sozler.size() + " söz, " + v.kategoriler.size() + " kategori"
+                : "Söz dosyanız (.sqlite) yalnızca bu telefonda saklanır. Cuma mesajları ile Anne ve Anneler Günü kategorileri alınmaz.",
+                var ? 14 : 12, var ? METIN : SOLUK), 14, -2);
+        ekle(kart, dugme(var ? "Başka dosya yükle" : "SQLite dosyasından yükle", !var, new Runnable() {
+            @Override
+            public void run() {
+                dosyaSec(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("*/*"), SOZ_DOSYASI);
+            }
+        }), 8, 46);
+        if (var && !Ayar.al(this).getString("kendiSozler", "").trim().isEmpty()) {
+            ekle(kart, metin("Yukarıdaki kutuda kendi sözünüz yazılı olduğu için şu an dosya yerine onlar gösteriliyor. Dosyayı kullanmak için kutuyu boşaltın.",
+                    12, UYARI), 8, -2);
+        }
+        anahtar("Karışık (rastgele)", "Açıkken açık kategorilerdeki sözler karışık gelir; kapalıyken sırayla.", "sozKarisik", true);
+        ekle(kart, metin("Gözlerde ne sıklıkla söz görünsün", 13, SOLUK), 14, -2);
+        LinearLayout satir = new LinearLayout(this);
+        int secili = Ayar.al(this).getInt("sozSiklik", 1);
+        for (int i = 0; i < Sozler.SIKLIK_ADLARI.length; i++) {
+            final int n = i;
+            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(0, dp(40), 1f);
+            l.leftMargin = i == 0 ? 0 : dp(8);
+            satir.addView(dugme(Sozler.SIKLIK_ADLARI[i], i == secili, new Runnable() {
+                @Override
+                public void run() {
+                    Ayar.al(MainActivity.this).edit().putInt("sozSiklik", n).apply();
+                    ciz();
+                }
+            }), l);
+        }
+        ekle(kart, satir, 6, -2);
+        ekle(kart, metin("Gözlerde yalnızca 90 karaktere kadar olan sözler kayar. \"Güzel söz söyle\" derseniz uzunlar da okunur.",
+                12, SOLUK), 4, -2);
+        if (!var) return;
+        ekle(kart, metin("Kategoriler", 15, METIN), 16, -2);
+        for (int i = 0; i < v.kategoriler.size(); i++) kategoriAnahtari(v.kategoriler.get(i), v.sayi(i));
+        if (SozDepo.acik(this).isEmpty()) {
+            ekle(kart, metin("Bütün kategoriler kapalı: şu an uygulamanın hazır sözleri gösteriliyor.", 12, UYARI), 8, -2);
+        }
+        ekle(kart, dugme("Hepsini aç", false, new Runnable() {
+            @Override
+            public void run() {
+                Ayar.al(MainActivity.this).edit().putString("sozKapali", "").apply();
+                ciz();
+            }
+        }), 12, 42);
+        ekle(kart, dugme("Hepsini kapat", false, new Runnable() {
+            @Override
+            public void run() {
+                StringBuilder hepsi = new StringBuilder();
+                for (String ad : v.kategoriler) hepsi.append(ad).append('\n');
+                Ayar.al(MainActivity.this).edit().putString("sozKapali", hepsi.toString()).apply();
+                ciz();
+            }
+        }), 8, 42);
+        ekle(kart, dugme("Yüklenen sözleri sil", false, new Runnable() {
+            @Override
+            public void run() {
+                SozDepo.sil(MainActivity.this);
+                ciz();
+            }
+        }), 8, 42);
+    }
+
+    private void kategoriAnahtari(final String ad, int sayi) {
+        Switch s = new Switch(this);
+        s.setText(ad + "  (" + sayi + ")");
+        s.setContentDescription(ad);
+        s.setTextSize(14);
+        s.setTextColor(METIN);
+        final String kapali = "\n" + Ayar.al(this).getString("sozKapali", "") + "\n";
+        s.setChecked(!kapali.contains("\n" + ad + "\n"));
+        int[][] durumlar = {{android.R.attr.state_checked}, {}};
+        s.setThumbTintList(new ColorStateList(durumlar, new int[]{VURGU, 0xFFB8BFCE}));
+        s.setTrackTintList(new ColorStateList(durumlar, new int[]{0x8834D399, 0x55B8BFCE}));
+        s.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean acik) {
+                boolean hepsiKapaliydi = SozDepo.acik(MainActivity.this).isEmpty();
+                StringBuilder yeni = new StringBuilder();
+                for (String x : Ayar.al(MainActivity.this).getString("sozKapali", "").split("\n")) {
+                    if (!x.isEmpty() && !x.equals(ad)) yeni.append(x).append('\n');
+                }
+                if (!acik) yeni.append(ad).append('\n');
+                Ayar.al(MainActivity.this).edit().putString("sozKapali", yeni.toString()).apply();
+                // yalnızca "hepsi kapalı" uyarısı değişeceğinde panel yeniden çizilir; kaydırma yeri korunur
+                if (SozDepo.acik(MainActivity.this).isEmpty() != hepsiKapaliydi) ciz();
+            }
+        });
+        ekle(kart, s, 10, -2);
+    }
+
+    private void sozYukle(final Uri dosya) {
+        new Thread() {
+            @Override
+            public void run() {
+                String sonuc;
+                try {
+                    sonuc = SozDepo.yukle(getApplicationContext(), dosya) + " söz yüklendi.";
+                } catch (IOException e) {
+                    sonuc = "Söz dosyası yüklenemedi. kategoriler ve sozler tabloları olan bir SQLite dosyası seçin.";
+                }
+                final String mesaj = sonuc;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing() || isDestroyed()) return;
+                        ciz();
+                        uyar(mesaj);
+                    }
+                });
+            }
+        }.start();
     }
 
     private void efektKarti() {
@@ -1359,7 +1483,7 @@ public class MainActivity extends Activity {
                 {"Mesaj", "mesaj yaz akşam geliyorum · gönder"},
                 {"Ekran", "ekranı oku · Tamam butonuna tıkla · geri · ana ekran · aşağı kaydır"},
                 {"Sorular", "Atatürk kim · sor bana bir fıkra anlat · yapay zekâ nedir · Ankara hakkında bilgi · maç ne zaman · oku · okumayı durdur · pencereyi kapat"},
-                {"Hava ve piyasa", "hava durumu · dolar kaç · altın kaç · güzel söz söyle"},
+                {"Hava ve piyasa", "hava durumu · dolar kaç · altın kaç · güzel söz söyle · komik söz söyle · rastgele söz"},
                 {"Efekt", "kar yağdır · yağmur yağdır · yaprak dök · güneş aç"},
                 {"Alarm ve arama", "7'ye alarm kur · 10 dakika say · 8'de ilacı hatırlat · annemi ara"},
                 {"Hızlı", "feneri aç · kamerayı aç · parlaklığı artır · eve git · Wi-Fi aç"},

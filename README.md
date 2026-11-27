@@ -10,6 +10,16 @@ Sahra son aramayı, çıkan sonuçları ve girdiği siteyi 10 dakika aklında tu
 
 **Yetenekler → Kayıt bilgilerim** bölümüne ad, soyad, e-posta, kullanıcı adı, telefon ve şifrenizi kaydedin. Kayıt sayfasında "formu doldur" deyin: Sahra site adını söyleyip onay ister, tanıdığı boş kutuları (şifre ve tekrarı dahil) doldurur; kayıt düğmesine siz basarsınız. Kart, kimlik ve doğrulama kodu kutuları, şifre değiştirme formları, banka sayfaları ve kilitli ekran doldurulmaz. Bilgiler yalnızca telefonda durur, yedeğe ve yapay zekâya gitmez; şifre Android Anahtar Deposu anahtarıyla şifrelenir. Ekran kontrolü gerekir. Onaydaki site adını kontrol edin: Sahra sitenin sahte olup olmadığını anlayamaz.
 
+## Güzel sözler
+
+Ana ekrandaki "Boştayken gözlerde yazı" bölümünden kendi SQLite dosyanızı yükleyebilirsiniz (`kategoriler(ID, KatAdi)` ve `sozler(ID, KatId, Soz)` tabloları). Dosya depoya ya da APK'ya girmez, yalnızca telefonda saklanır.
+
+- Cuma mesajları ile Anne ve Anneler Günü kategorileri alınmaz; tekrar eden sözler bir kez alınır.
+- Her kategori için aç-kapat anahtarı vardır. "Karışık" açıkken sözler rastgele, kapalıyken sırayla gelir.
+- Robot boştayken gözlerinde 90 karaktere kadar sözler kayar; sıklık seyrek (5 dk), normal (2 dk) ya da sık (30 sn).
+- Komutlar: "güzel söz söyle", "rastgele söz", "komik söz söyle", "romantik söz" gibi. Adıyla istenen kategori kapalı olsa da okunur.
+- Kutuya kendi sözlerinizi yazdıysanız onlar dosyanın önüne geçer.
+
 ## Kenar ışığı
 
 Varsayılan **Orijinal ışık**tır (yeşil nefes, dinlerken gökkuşağı). **Robot → Kenar ışığı** bölümünden 10 renkten bir ya da birkaçını seçin. Yanma şekli (nefes, yanıp sönme, kalp atışı, dönen renkler, sabit), hız, en parlak ve en sönük hâl, yayılma, göz rengi ve dinlerken kullanılacak renkler ayarlanabilir. Işık sürekli hareket ettiği için sabit ışığa göre biraz daha fazla pil kullanabilir.
