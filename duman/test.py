@@ -50,7 +50,7 @@ def ornek():
         l.append(piksel(x - int(en*0.36), y)); time.sleep(0.4)
     return l
 if w is not None: yaz('kenar pikselleri (varsayılan)', ornek())
-dokun('ışık kirmizi'); time.sleep(1); dokun('ışık yesil'); time.sleep(2); yaz('ayar', ayar())
+dokun('Zümrüt'); dokun('ışık kirmizi'); dokun('ışık yesil'); time.sleep(3); yaz('ayar', ayar())
 def ham():
     h = subprocess.run(['adb', 'exec-out', 'screencap'], capture_output=True).stdout
     w, y = struct.unpack('<II', h[:8]); return h, w, len(h) - w*y*4
