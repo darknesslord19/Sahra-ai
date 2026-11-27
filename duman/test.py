@@ -22,18 +22,22 @@ def piksel(x, y):
     return '#%02x%02x%02x' % tuple(ham[i:i+3])
 yaz('kurulum', adb('install', '-r', 'app/build/outputs/apk/debug/app-debug.apk').strip())
 sh(f'am start -n {P}/.MainActivity'); time.sleep(8)
+def renkler(yer):
+    say = 0
+    for d in dugumler():
+        ad = d.get('content-desc') or ''
+        if ad in adlar:
+            say += 1; yaz(yer, ad, d.get('bounds'), piksel(*merkez(d)))
+    yaz(yer, 'toplam', say)
+adlar = ['beyaz','siyah','mavi','turkuaz','yesil','mor','pembe','kirmizi','altin']
+renkler('ana')
+n = next(d for d in dugumler() if d.get('content-desc') == 'mor'); x, y = merkez(n); sh(f'input tap {x} {y}'); time.sleep(2)
+yaz('seçilen', re.findall(r'name="renk">(\w+)<', sh(f'run-as {P} cat shared_prefs/ayar.xml')) or sh(f'run-as {P} grep -rh renk shared_prefs').strip())
 n = None
 for _ in range(12):
     n = bul('Robot görünümü')
     if n is not None and merkez(n)[1] < 2150: break
     sh('input swipe 540 1700 540 900 400'); time.sleep(1)
 x, y = merkez(n); sh(f'input tap {x} {y}'); time.sleep(4)
-adlar = ['beyaz','siyah','mavi','turkuaz','yesil','mor','pembe','kirmizi','altin']
-for d in dugumler():
-    ad = d.get('content-desc') or d.get('text') or ''
-    s = d.get('class', '').split('.')[-1]
-    if ad in adlar:
-        yaz('renk', ad, d.get('bounds'), piksel(*merkez(d)))
-    else:
-        yaz('düğüm', s, d.get('bounds'), ad[:40])
+renkler('panel')
 yaz('çökme', P in adb('logcat', '-d', '-b', 'crash'))
