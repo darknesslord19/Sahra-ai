@@ -15,7 +15,7 @@ def bul(m, d=None):
     for n in (d or dugumler()):
         if m in (n.get('text'), n.get('content-desc'), n.get('hint')): return n
 def kaydirip(m, yon=1):
-    for _ in range(12):
+    for _ in range(30):
         n = bul(m)
         if n is not None and merkez(n)[1] < 2150: return n
         sh('input swipe 540 1800 540 1300 600' if yon > 0 else 'input swipe 540 1300 540 1800 600'); time.sleep(1)
