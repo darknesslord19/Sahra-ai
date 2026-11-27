@@ -26,11 +26,14 @@ import java.util.Locale;
 final class Yedek {
     static final String DOSYA = "sahra-yedek.json";
     private static final String[] YAZI_AYARLARI = {"hitap", "renk", "muzik", "ses", "davranis",
-            "sehir", "enlem", "boylam", "kendiSozler", "netSes"};
-    private static final String[] SAYI_AYARLARI = {"boyut", "hiz", "ton", "efektDakika", "hsure", "hassas"};
+            "sehir", "enlem", "boylam", "kendiSozler", "netSes",
+            "isikRenk", "isikSekil"};
+    private static final String[] SAYI_AYARLARI = {"boyut", "hiz", "ton", "efektDakika", "hsure", "hassas",
+            "isikHiz", "isikUst", "isikAlt", "isikYay"};
 
     private static final String[] ACMA_AYARLARI = {"surekli", "yaziAcik", "havaAcik", "sozAcik", "kurAcik", "efektAcik",
-            "alarm", "shava", "skur", "stak", "ssoz", "sesYedek"};
+            "alarm", "shava", "skur", "stak", "ssoz", "sesYedek",
+            "isikGoz", "isikDinle"};
 
     // ---------- Komutlar ----------
 
@@ -107,6 +110,10 @@ final class Yedek {
             if (a.has("hsure")) e.putInt("hsure", sinirla(a.optInt("hsure", 5), 1, 15));
             if (a.has("hassas")) e.putInt("hassas", sinirla(a.optInt("hassas", 5), 1, 10));
             if (a.has("efektDakika")) e.putInt("efektDakika", sinirla(a.optInt("efektDakika", 5), 1, 30));
+            if (a.has("isikHiz")) e.putInt("isikHiz", sinirla(a.optInt("isikHiz", Isik.ILK_HIZ), 0, 100));
+            if (a.has("isikUst")) e.putInt("isikUst", sinirla(a.optInt("isikUst", Isik.ILK_UST), 40, 100));
+            if (a.has("isikAlt")) e.putInt("isikAlt", sinirla(a.optInt("isikAlt", Isik.ILK_ALT), 0, 70));
+            if (a.has("isikYay")) e.putInt("isikYay", sinirla(a.optInt("isikYay", Isik.ILK_YAY), 0, 100));
             e.remove("havaZamani");
             e.apply();
         }

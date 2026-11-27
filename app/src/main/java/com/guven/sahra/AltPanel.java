@@ -127,6 +127,12 @@ final class AltPanel extends Dialog {
         setCanceledOnTouchOutside(true);
     }
 
+    /** Görünümü başlığın altına, kaydırılan alanın dışına koyar. */
+    void sabitle(View v, LinearLayout.LayoutParams l) {
+        LinearLayout kok = (LinearLayout) kaydir.getParent();
+        kok.addView(v, kok.indexOfChild(kaydir), l);
+    }
+
     @Override
     public void show() {
         super.show();

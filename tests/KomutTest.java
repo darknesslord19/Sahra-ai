@@ -212,6 +212,16 @@ public class KomutTest {
         denetle("yakin3", com.guven.sahra.Zaman.yakinSaat("sabah 8 de", 480, 600) == 480);
         byte[] wav = com.guven.sahra.Wav.hazirla(new byte[]{1, 2, 3, 4}, "audio/L16;codec=pcm;rate=24000");
         denetle("wav", wav.length == 48 && wav[0] == 'R' && com.guven.sahra.Wav.hazirla(wav, "audio/wav") == wav);
+        denetle("isik1", com.guven.sahra.Isik.degistir("yesil", "yesil").equals("yesil"));
+        denetle("isik2", com.guven.sahra.Isik.degistir("yesil,mor", "mavi").equals("yesil,mor,mavi")
+                && com.guven.sahra.Isik.degistir("yesil,mor", "yesil").equals("mor"));
+        denetle("isik3", String.join(",", com.guven.sahra.Isik.secili("\"x,)alert(1),mor,mor")).equals("mor")
+                && com.guven.sahra.Isik.secili("").size() == 3);
+        denetle("isik4", com.guven.sahra.Isik.saniye(0) == 5.0 && com.guven.sahra.Isik.saniye(500) == 0.8);
+        denetle("isik5", com.guven.sahra.Isik.json("mor", "bozuk", 62, 10, 70, 45, true, false).equals(
+                "{\"renkler\":[\"#8b5cf6\"],\"sekil\":\"orijinal\",\"sure\":2.4,\"ust\":0.70,\"alt\":0.70,\"yay\":0.45,\"goz\":true,\"dinle\":false}"));
+        denetle("isik6", com.guven.sahra.Isik.sekil(null).equals("orijinal") && com.guven.sahra.Isik.sekil("kalp").equals("kalp")
+                && com.guven.sahra.Isik.sekilAdi("orijinal").equals("Orijinal"));
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }
