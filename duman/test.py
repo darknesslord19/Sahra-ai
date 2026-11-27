@@ -36,11 +36,15 @@ def dokun(m):
     x, y = merkez(n); sh(f'input tap {x} {y}'); time.sleep(1.5); return True
 def ayar(): return ' '.join(l.strip() for l in sh(f"run-as {P} sh -c 'cat shared_prefs/*.xml'").splitlines() if 'isik' in l)
 def bas():
-    for _ in range(5): sh('input swipe 540 900 540 2100 150')
+    for _ in range(5): sh('input swipe 540 900 540 2100 700')
     time.sleep(1)
 yaz('açılışta renk', [l.strip() for l in sh(f"run-as {P} sh -c 'cat shared_prefs/*.xml'").splitlines() if 'name="renk"' in l] or 'yok (beyaz)')
 bas()
 yaz('kaydırmadan sonra renk', [l.strip() for l in sh(f"run-as {P} sh -c 'cat shared_prefs/*.xml'").splitlines() if 'name="renk"' in l] or 'yok (beyaz)')
+for i in range(4):
+    sh('input swipe 540 880 540 300 350'); time.sleep(1); sh('input swipe 540 900 540 1900 350'); time.sleep(1)
+bas()
+yaz('renk sırasından kaydırınca', [l.strip() for l in sh(f"run-as {P} sh -c 'cat shared_prefs/*.xml'").splitlines() if 'name="renk"' in l] or 'yok (beyaz)')
 dokun("Sahra'yı başlat"); time.sleep(6)
 yaz('hizmet', 'SahraService' in sh(f'dumpsys activity services {P}'))
 for deneme in range(3):
