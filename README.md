@@ -2,6 +2,14 @@
 
 Telefonda yüzen, Türkçe sesli ve yazılı komut alan robot asistan.
 
+## Beyin ve bellek
+
+Sahra son aramayı, çıkan sonuçları ve girdiği siteyi 10 dakika aklında tutar: "Chrome'da Trendyol ara" → "aç gir" → "sonraki siteye gir" → "ikinci siteye gir". "X sitesine gir" arayıp doğrudan girer; "trendyol nokta com'a gir" adresi açar. Adı alan adıyla birebir eşleşen siteler öğrenilir ve sonraki sefer aramadan açılır ("yanlış site" derseniz silinir; **Yetenekler → Beyin ve bellek** bölümünden kapatılıp temizlenebilir). Sonuca girmek için ekran kontrolü gerekir ve Chrome üzerinde çalışır. Bağlantılar telefonda işlenir; yapay zekâya ya da yedeğe gönderilmez.
+
+## Kayıt formu doldurma
+
+**Yetenekler → Kayıt bilgilerim** bölümüne ad, soyad, e-posta, kullanıcı adı, telefon ve şifrenizi kaydedin. Kayıt sayfasında "formu doldur" deyin: Sahra site adını söyleyip onay ister, tanıdığı boş kutuları (şifre ve tekrarı dahil) doldurur; kayıt düğmesine siz basarsınız. Kart, kimlik ve doğrulama kodu kutuları, şifre değiştirme formları, banka sayfaları ve kilitli ekran doldurulmaz. Bilgiler yalnızca telefonda durur, yedeğe ve yapay zekâya gitmez; şifre Android Anahtar Deposu anahtarıyla şifrelenir. Ekran kontrolü gerekir. Onaydaki site adını kontrol edin: Sahra sitenin sahte olup olmadığını anlayamaz.
+
 ## Kenar ışığı
 
 Varsayılan **Orijinal ışık**tır (yeşil nefes, dinlerken gökkuşağı). **Robot → Kenar ışığı** bölümünden 10 renkten bir ya da birkaçını seçin. Yanma şekli (nefes, yanıp sönme, kalp atışı, dönen renkler, sabit), hız, en parlak ve en sönük hâl, yayılma, göz rengi ve dinlerken kullanılacak renkler ayarlanabilir. Işık sürekli hareket ettiği için sabit ışığa göre biraz daha fazla pil kullanabilir.
