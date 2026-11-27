@@ -10,6 +10,11 @@ Sahra son aramayı, çıkan sonuçları ve girdiği siteyi 10 dakika aklında tu
 
 **Yetenekler → Kayıt bilgilerim** bölümüne ad, soyad, e-posta, kullanıcı adı, telefon ve şifrenizi kaydedin. Kayıt sayfasında "formu doldur" deyin: Sahra site adını söyleyip onay ister, tanıdığı boş kutuları (şifre ve tekrarı dahil) doldurur; kayıt düğmesine siz basarsınız. Kart, kimlik ve doğrulama kodu kutuları, şifre değiştirme formları, banka sayfaları ve kilitli ekran doldurulmaz. Bilgiler yalnızca telefonda durur, yedeğe ve yapay zekâya gitmez; şifre Android Anahtar Deposu anahtarıyla şifrelenir. Ekran kontrolü gerekir. Onaydaki site adını kontrol edin: Sahra sitenin sahte olup olmadığını anlayamaz.
 
+## Sahra 1 ve dokunma tepkileri
+
+- Robot görünümü bölümünde iki seçenek vardır: **Sahra** (varsayılan, ilk görünüm) ve **Sahra 1** (elli 3B gövde). Sahra 1 ayarları: 20 hazır karışım, 30 el-kol pozu ve "Otomatik", göz ifadeleri, ağız, 17 gövde hareketi, dönüş ve bakış yönü, hız, elleri gizleme. Telefonda 3B çizim açılamazsa uygulama Sahra'ya döner. `robot1.html` dosyası `araclar/sahra1/kur.py` ile üretilir.
+- İki görünümde de: tutup daire çizerek çevirince başı döner ve bunu söyler; sallama, taşıma, bırakma ve art arda dokunmaya tepki verir. Tek dokunuş yine dinler, basılı tutma ayarları açar. Tepkiler ve sesleri "Dokunma tepkileri" bölümünden kapatılabilir.
+
 ## Ad ve hitap
 
 "Ad ve hitap" bölümünden asistanın size nasıl sesleneceğini ve asistanın adını değiştirebilirsiniz. Ad tek sözcük ve 2-15 harf olmalıdır; komut sözcükleri kabul edilmez. Sesle uyandırma yalnızca yeni adı bekler; yazılı komutta "Sahra" da kabul edilir. Telefondaki uygulama simgesinin adı Sahra olarak kalır. Telefonda uyandırma modeli her adı aynı doğrulukta tanımayabilir.

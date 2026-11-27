@@ -99,6 +99,9 @@ html,body{margin:0;height:100%;overflow:hidden;background:transparent;-webkit-ta
 #gbot.ex-excited .eye{width:14%;height:44%}
 #gbot.ex-excited .bot{animation:gbjump .38s ease-in-out infinite alternate}
 @keyframes gbjump{from{transform:translateY(1px) scale(1)}to{transform:translateY(-6px) scale(1.04)}}
+/* dokunma tepkileri */
+#gbot.sarhos .bot{animation:gbsarhos 1.1s ease-in-out infinite}
+@keyframes gbsarhos{0%,100%{transform:translate(0,0) rotate(-14deg)}25%{transform:translate(3px,-2px) rotate(0)}50%{transform:translate(0,1px) rotate(14deg)}75%{transform:translate(-3px,-2px) rotate(0)}}
 /* kayan yazı (göz bölgesi) */
 #gbot .tkwrap{position:absolute;inset:0;border-radius:inherit;overflow:hidden;opacity:0;transition:opacity .25s}
 #gbot.tk-on .tkwrap{opacity:1}
@@ -136,7 +139,7 @@ function yaziDurdur(){bot.classList.remove('tk-on','tk-run')}
 tkin.addEventListener('animationend',yaziDurdur);
 /* yalnızca beklerken, yazıyı gözlerin yerinde bir kez kaydırır */
 function robotYazi(m){
-  if(bot.getAttribute('data-state')!=='idle')return;
+  if(bot.getAttribute('data-state')!=='idle'||tepkiZaman)return;
   yaziDurdur();void tkin.offsetWidth;tkin.textContent=m;
   var vw=gozluk.clientWidth,tw=tkin.scrollWidth;
   tkin.style.setProperty('--vw',vw+'px');
@@ -195,10 +198,22 @@ function ciz(t){
   }
 }
 function robotIsik(a){isik=a;if(!calisiyor){calisiyor=true;requestAnimationFrame(ciz)}}
+/* dokunma tepkileri: kısa süre bir ifade oynatır, sonra seçili davranışa döner */
+var TEPKI={tut:['wow',1200],birak:['happy',1400],firlat:['excited',1800],kirp:['wink',1200],gidik:['laugh',2600],kizgin:['angry',3200],salla:['xeyes',3600],don:['dizzy',7000]};
+var tepkiZaman=null,tepkiAdi='';
+function robotTepki(ad){
+  var t=TEPKI[ad];if(!t)return;
+  /* süren baş dönmesini küçük tepkiler kesmez */
+  if(tepkiZaman&&tepkiAdi==='don'&&ad!=='don')return;
+  yaziDurdur();clearInterval(tekrar);temizle();clearTimeout(tepkiZaman);bot.classList.remove('sarhos');
+  tepkiAdi=ad;cur=t[0];son=t[0];bot.classList.add('ex-'+t[0]);if(ad==='don')bot.classList.add('sarhos');
+  eyes.style.transform='';
+  tepkiZaman=setTimeout(function(){tepkiZaman=null;bot.classList.remove('sarhos');sabitle()},t[1]);
+}
 function robot(state,color,yeniKip){
   if(state==='active')yaziDurdur();
-  if(!EX[kip]&&state==='active'&&bot.getAttribute('data-state')!=='active')temizle();
+  if(!tepkiZaman&&!EX[kip]&&state==='active'&&bot.getAttribute('data-state')!=='active')temizle();
   bot.setAttribute('data-state',state);bot.setAttribute('data-color',color);
-  if(yeniKip&&yeniKip!==kip){kip=yeniKip;sabitle()}
+  if(yeniKip&&yeniKip!==kip){kip=yeniKip;if(!tepkiZaman)sabitle()}
 }
 </script></body></html>

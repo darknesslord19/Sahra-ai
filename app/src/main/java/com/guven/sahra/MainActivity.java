@@ -63,6 +63,7 @@ public class MainActivity extends Activity {
     private static final int FARKLI_KAYDET = 10;
     private static final int GERI_YUKLE = 11;
     private static final int SOZ_DOSYASI = 12;
+    private String acikAltBaslik = "";
 
     private LinearLayout kok;
     private LinearLayout kart;
@@ -223,8 +224,15 @@ public class MainActivity extends Activity {
         l.add(new Bolum("Yetenekler", "Araba modu", "Büyük yazı, tek komut", R.drawable.ik_araba, new Runnable() {
             @Override public void run() { arabaKarti(); }
         }));
-        l.add(new Bolum("Robot", "Robot görünümü", "Renk ve boyut", R.drawable.ik_palet, new Runnable() {
+        l.add(new Bolum("Robot", "Robot görünümü", (Ayar.sahra1(this) ? "Sahra 1" : "Sahra") + " · renk ve boyut", R.drawable.ik_palet, new Runnable() {
             @Override public void run() { gorunumKarti(); }
+        }));
+        l.add(new Bolum("Robot", "Sahra 1 ayarları",
+                Ayar.sahra1(this) ? "El-kol, hareket, dönüş" : "Sahra 1 seçiliyken geçerli", R.drawable.ik_yildiz, new Runnable() {
+            @Override public void run() { sahra1Karti(); }
+        }));
+        l.add(new Bolum("Robot", "Dokunma tepkileri", durumu("tepkiler", true), R.drawable.ik_yuz, new Runnable() {
+            @Override public void run() { tepkiKarti(); }
         }));
         l.add(new Bolum("Robot", "Kenar ışığı",
                 Isik.sekilAdi(Ayar.al(this).getString("isikSekil", Isik.ORIJINAL)), R.drawable.ik_isik, new Runnable() {
@@ -920,8 +928,175 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(dp(96), dp(96));
         gl.gravity = Gravity.CENTER_HORIZONTAL;
         kart.addView(gorunumOnizleme, gl);
+        modelSecimi();
         ekle(kart, renkSirasi(), 10, -2);
         kaydirici("Boyut", "boyut", 46, 184, 92, " dp", SahraService.YENILE);
+    }
+
+    private void modelSecimi() {
+        final boolean bir = Ayar.sahra1(this);
+        LinearLayout satir = new LinearLayout(this);
+        for (int i = 0; i < 2; i++) {
+            final boolean sahra1 = i == 1;
+            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(0, dp(46), 1f);
+            l.leftMargin = i == 0 ? 0 : dp(8);
+            satir.addView(dugme(sahra1 ? "Sahra 1 (elli)" : "Sahra", bir == sahra1, new Runnable() {
+                @Override
+                public void run() {
+                    Ayar.al(MainActivity.this).edit().putString("model", sahra1 ? "sahra1" : "sahra").apply();
+                    yenile();
+                    ciz();
+                }
+            }), l);
+        }
+        ekle(kart, satir, 10, -2);
+    }
+
+    /** Bir listeyi ikişerli düğmeler hâlinde gösterir; seçili olan vurgulanır. */
+    private void secenekler(String[][] liste, String secili, final Secim secim) {
+        LinearLayout satir = null;
+        for (int i = 0; i < liste.length; i++) {
+            if (i % 2 == 0) {
+                satir = new LinearLayout(this);
+                ekle(kart, satir, 8, -2);
+            }
+            final String kimlik = liste[i][0];
+            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(0, dp(46), 1f);
+            l.leftMargin = i % 2 == 0 ? 0 : dp(8);
+            TextView d = dugme(liste[i][1], kimlik.equals(secili), new Runnable() {
+                @Override
+                public void run() {
+                    secim.secildi(kimlik);
+                    yenile();
+                    ciz();
+                }
+            });
+            d.setTextSize(13);
+            satir.addView(d, l);
+        }
+        if (liste.length % 2 == 1) satir.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+    }
+
+    private interface Secim {
+        void secildi(String kimlik);
+    }
+
+    /** Dokununca açılıp kapanan alt başlık; panel uzayıp gitmesin diye. */
+    private boolean altBaslik(final String ad, String secili) {
+        final boolean acik = ad.equals(acikAltBaslik);
+        ekle(kart, dugme((acik ? "▾  " : "▸  ") + ad + (secili.isEmpty() ? "" : ":  " + secili), false, new Runnable() {
+            @Override
+            public void run() {
+                acikAltBaslik = acik ? "" : ad;
+                ciz();
+            }
+        }), 14, 48);
+        return acik;
+    }
+
+    private void sahra1Yaz(String ad, String deger) {
+        Ayar.al(this).edit().putString(ad, deger).apply();
+    }
+
+    private void sahra1Karti() {
+        if (!Ayar.sahra1(this)) {
+            aciklama("Bu ayarlar Sahra 1 görünümüne aittir. Şu an Sahra seçili.");
+            modelSecimi();
+            return;
+        }
+        final SharedPreferences p = Ayar.al(this);
+        gorunumOnizleme = robotGorunumu();
+        LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(dp(168), dp(168));
+        gl.gravity = Gravity.CENTER_HORIZONTAL;
+        kart.addView(gorunumOnizleme, gl);
+        modelSecimi();
+        if (altBaslik("Hazır karışımlar", "")) {
+            String[][] l = new String[Sahra1.HAZIR.length][];
+            for (int i = 0; i < l.length; i++) l[i] = new String[]{String.valueOf(i), Sahra1.HAZIR[i][0]};
+            secenekler(l, "", new Secim() {
+                @Override
+                public void secildi(String kimlik) {
+                    String[] h = Sahra1.HAZIR[Integer.parseInt(kimlik)];
+                    p.edit().putString("s1Poz", h[1]).putString("davranis", h[2]).putString("s1Hareket", h[3])
+                            .putInt("s1Yon", Integer.parseInt(h[4])).putString("s1Donus", "sabit").apply();
+                }
+            });
+        }
+        String poz = p.getString("s1Poz", "oto");
+        if (altBaslik("El-kol", Sahra1.ad(Sahra1.POZLAR, poz))) {
+            secenekler(Sahra1.POZLAR, poz, new Secim() {
+                @Override
+                public void secildi(String kimlik) {
+                    sahra1Yaz("s1Poz", kimlik);
+                }
+            });
+        }
+        if (altBaslik("Gözler", Davranis.ad(Ayar.davranis(this)))) {
+            secenekler(Davranis.LISTE, Ayar.davranis(this), new Secim() {
+                @Override
+                public void secildi(String kimlik) {
+                    sahra1Yaz("davranis", kimlik);
+                }
+            });
+        }
+        String agiz = p.getString("s1Agiz", "oto");
+        if (altBaslik("Ağız", Sahra1.ad(Sahra1.AGIZLAR, agiz))) {
+            secenekler(Sahra1.AGIZLAR, agiz, new Secim() {
+                @Override
+                public void secildi(String kimlik) {
+                    sahra1Yaz("s1Agiz", kimlik);
+                }
+            });
+        }
+        String hareket = p.getString("s1Hareket", "suzul");
+        if (altBaslik("Gövde hareketi", Sahra1.ad(Sahra1.HAREKETLER, hareket))) {
+            secenekler(Sahra1.HAREKETLER, hareket, new Secim() {
+                @Override
+                public void secildi(String kimlik) {
+                    sahra1Yaz("s1Hareket", kimlik);
+                }
+            });
+        }
+        String donus = p.getString("s1Donus", "sabit");
+        String yon = String.valueOf(p.getInt("s1Yon", 0));
+        if (altBaslik("Dönüş", donus.equals("sabit") ? yon + "°" : Sahra1.ad(Sahra1.DONUSLER, donus))) {
+            secenekler(Sahra1.DONUSLER, donus, new Secim() {
+                @Override
+                public void secildi(String kimlik) {
+                    sahra1Yaz("s1Donus", kimlik);
+                }
+            });
+            ekle(kart, metin("Bakış yönü", 13, SOLUK), 12, -2);
+            secenekler(Sahra1.YONLER, yon, new Secim() {
+                @Override
+                public void secildi(String kimlik) {
+                    p.edit().putInt("s1Yon", Integer.parseInt(kimlik)).putString("s1Donus", "sabit").apply();
+                }
+            });
+        }
+        anahtar("Eller görünsün", "", "s1Eller", true);
+        kaydirici("Hareket hızı", "s1Hiz", 40, 180, 100, "%", SahraService.YENILE);
+        ekle(kart, dugme("Sahra 1'i ilk ayarlarına döndür", false, new Runnable() {
+            @Override
+            public void run() {
+                p.edit().remove("s1Poz").remove("s1Hareket").remove("s1Yon").remove("s1Donus").remove("s1Agiz")
+                        .remove("s1Eller").remove("s1Hiz").putString("davranis", "rastgele").apply();
+                yenile();
+                ciz();
+            }
+        }), 14, 46);
+        aciklama("Gövde rengi Robot görünümü, ışık ise Kenar ışığı bölümünden ayarlanır.");
+    }
+
+    private void tepkiKarti() {
+        anahtar("Dokunma tepkileri", "Yüzen robota dokunuşlara göz ve hareketle karşılık verir.", "tepkiler", true);
+        anahtar("Tepkilerde sesli konuş", "Kapalıyken yalnızca gözleri ve hareketi değişir.", "tepkiSes", true);
+        aciklama("• Tutup daire çizerek çevirin (yaklaşık iki tur): başı döner, \"Başım dönüyor! Acilen hastaneye gitmem gerekebilir.\" der.\n"
+                + "• Hızlıca ileri geri sallayın: midesi bulanır.\n"
+                + "• Tutup taşıyın: şaşırır; bırakınca sevinir, hızlı bırakınca heyecanlanır.\n"
+                + "• Bir kez dokunun: dinler. İki kez: göz kırpar.\n"
+                + "• Art arda üç kez: gıdıklanır. Beş ve daha fazla: kızar.\n"
+                + "• Basılı tutun: ayarlar açılır.");
     }
 
     private void beyinKarti() {
@@ -1841,7 +2016,7 @@ public class MainActivity extends Activity {
                 boya(v);
             }
         });
-        w.loadUrl("file:///android_asset/robot.html");
+        w.loadUrl(Ayar.robotSayfasi(this));
         return w;
     }
 
@@ -1850,6 +2025,7 @@ public class MainActivity extends Activity {
             w.evaluateJavascript("window.robot&&robot('idle'," + JSONObject.quote(Ayar.renk(this)) + ","
                     + JSONObject.quote(Ayar.davranis(this)) + ")", null);
             w.evaluateJavascript("window.robotIsik&&robotIsik(" + Ayar.isik(this) + ")", null);
+            w.evaluateJavascript("window.robotAyar&&robotAyar(" + Ayar.sahra1Ayari(this) + ")", null);
         }
     }
 

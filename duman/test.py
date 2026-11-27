@@ -1,4 +1,4 @@
-import re, sqlite3, subprocess, time, xml.etree.ElementTree as ET
+import math, re, subprocess, time, xml.etree.ElementTree as ET
 P = 'com.guven.sahra'
 def adb(*a): return subprocess.run(['adb', *a], capture_output=True, timeout=180).stdout.decode('utf-8', 'replace')
 def sh(c): return adb('shell', c)
@@ -25,103 +25,85 @@ def dokun(m, yon=1):
         yaz('bulunamadı', m, '| ekranda:', [x.get('text') for x in dugumler() if x.get('text')][:30]); return False
     x, y = merkez(n); sh(f'input tap {x} {y}'); time.sleep(2); return True
 def metinler(): return [x.get('text') for x in dugumler() if x.get('text')]
-# Uydurma deneme veritabanı (kullanıcının dosyası depoya konmaz)
-db = sqlite3.connect('/tmp/deneme.sqlite')
-db.execute('create table kategoriler(ID integer primary key, KatAdi text, Icon text)')
-db.execute('create table sozler(ID integer unique, KatId integer, Soz text, FavDurum integer, GunSoz integer)')
-for i, a in [(1, 'Komik Sözler'), (2, 'Dini Sözler'), (3, 'Romantik Sözler'), (17, 'Cuma Günü Mesajları'), (18, 'Anne ve Anneler Günü İçin Sözler')]:
-    db.execute('insert into kategoriler values(?,?,?)', (i, a, ''))
-n = 0
-def ekle(k, s):
-    global n; n += 1; db.execute('insert into sozler values(?,?,?,0,0)', (n, k, s))
-for i in range(1, 4):
-    ekle(1, f'KOMIK-{i} çok güzel şaka')
-    ekle(2, f'DINI-{i} güzel öğüt')
-    ekle(3, f'ROMANTIK-{i} sevgi')
-    ekle(17, f'CUMA-{i}'); ekle(18, f'ANNE-{i}')
-ekle(1, 'KOMIK-UZUN ' + 'çok uzun bir söz ' * 8)
-ekle(1, '  KOMIK-1   çok güzel şaka '); ekle(2, '')
-db.commit(); db.close()
 yaz('kurulum', adb('install', '-r', 'app/build/outputs/apk/debug/app-debug.apk').strip())
-adb('push', '/tmp/deneme.sqlite', '/sdcard/Download/deneme.sqlite')
-sh('am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download/deneme.sqlite')
 for i in ['RECORD_AUDIO', 'POST_NOTIFICATIONS']: sh(f'pm grant {P} android.permission.{i}')
 sh(f'appops set {P} SYSTEM_ALERT_WINDOW allow')
 sh(f'am start -n {P}/.MainActivity'); time.sleep(8)
 def komut(c, bekle=6):
-    adb('logcat', '-c')
     sh(f"am start-foreground-service -n {P}/.SahraService -a komut --es komut \"{c}\""); time.sleep(bekle)
-    yaz('>>>', c)
+def kayit(baslik):
+    yaz('---', baslik)
     for l in adb('logcat', '-d').splitlines():
-        if 'SAHRADBG' in l and ' SOZ ' in l: yaz('   ', l[l.index(' SOZ '):][:200])
-komut('komik söz söyle')
-sh(f'am start -n {P}/.MainActivity'); time.sleep(3)
-dokun('Boştayken gözlerde yazı')
-dokun('SQLite dosyasından yükle'); time.sleep(4)
-if bul('deneme.sqlite') is None:
-    yaz('seçici ilk ekran', metinler()[:25])
-    dokun('Show roots'); dokun('Downloads'); time.sleep(2)
-dokun('deneme.sqlite'); time.sleep(4)
-yaz('yükleme sonrası', [m for m in metinler() if 'söz' in m.lower()])
-dokun('TAMAM')
-dokun('Sık')
-for k in ['Komik Sözler  (4)', 'Dini Sözler  (3)', 'Romantik Sözler  (3)']:
-    yaz('kategori görünüyor', k, kaydirip(k) is not None)
-yaz('cuma/anne yok', not any('Cuma Günü' in m or 'Anneler' in m and '(' in m for m in metinler()))
-dokun('Dini Sözler', -1) if bul('Dini Sözler') is not None else dokun('Dini Sözler')
-def ayar(): return sh(f'run-as {P} cat shared_prefs/{pref}')
-dosyalar = sh(f'run-as {P} ls shared_prefs').split()
-for pref in dosyalar:
-    if 'sozKapali' in sh(f'run-as {P} cat shared_prefs/{pref}'):
-        yaz('ayar', re.findall(r'<(?:string|int|boolean) name="soz\w+"[^<]*(?:</string>)?', ayar()))
-yaz('uygulama dosyaları', sh(f'run-as {P} ls files cache'))
-sh(f'am force-stop {P}'); time.sleep(2)
-for c in ['güzel söz söyle'] * 4 + ['rastgele söz', 'komik söz söyle', 'dini söz', 'romantik söz oku', 'damar söz']:
-    komut(c)
-komut('dur', 3)
-adb('logcat', '-c'); sh(f'am force-stop {P}'); sh(f'am start -n {P}/.MainActivity'); time.sleep(3)
-komut('merhaba', 4)
-sh('input keyevent 3')
-adb('logcat', '-c'); time.sleep(150)
-for l in adb('logcat', '-d', '-v', 'time').splitlines():
-    if 'SAHRADBG' in l and 'GOZ' in l: yaz('   ', l[6:18], l[l.index('GOZ'):][:200])
-# Ad ve hitap
-sh(f'am force-stop {P}'); sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
-dokun('Ad ve hitap', -1)
-def kutular(): return [x for x in dugumler() if x.get('class') == 'android.widget.EditText']
-def klavyeKapat():
-    if 'mInputShown=true' in sh('dumpsys input_method'): sh('input keyevent 4'); time.sleep(1.5)
-def doldur(sira, deger):
-    k = kutular()
-    x, y = merkez(k[sira]); sh(f'input tap {x} {y}'); time.sleep(1.5)
-    sh('input keyevent 123 ' + '67 ' * 20); time.sleep(1)
-    sh(f"input text '{deger}'"); time.sleep(1); klavyeKapat()
-yaz('ad kutuları', [x.get('text') for x in kutular()])
-doldur(1, 'ac'); dokun('Adı kaydet'); yaz('geçersiz ad uyarısı', [m for m in metinler() if 'Ad tek' in m]); dokun('TAMAM')
-doldur(0, 'Patron'); doldur(1, 'elif'); dokun('Adı kaydet')
-yaz('ad uyarısı', [m for m in metinler() if 'artık' in m]); dokun('TAMAM')
-yaz('ad kutuları sonra', [x.get('text') for x in kutular()])
+        if 'SAHRADBG' in l: yaz('   ', l[l.index('SAHRADBG') + 8:][:160])
+        elif 'chromium' in l and 'CONSOLE' in l and 'robot' in l: yaz('   KONSOL', l[-220:])
+    adb('logcat', '-c')
+def pencere():
+    d = sh('dumpsys window windows')
+    for blok in re.split(r'\n  Window #', d):
+        if P in blok and 'APPLICATION_OVERLAY' in blok:
+            m = re.search(r'\bframe=\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]', blok)
+            if m:
+                a = list(map(int, m.groups()))
+                if abs((a[2]-a[0]) - (a[3]-a[1])) <= 2 and a[2]-a[0] < 700: return a
+    yaz('robot penceresi bulunamadı')
+def piksel(ad):
+    """Ekran görüntüsünü saklamadan robot penceresindeki koyu (vizör) ve açık (gövde) piksel oranını ölçer."""
+    a = pencere()
+    ham = subprocess.run(['adb', 'exec-out', 'screencap'], capture_output=True, timeout=60).stdout
+    w = int.from_bytes(ham[0:4], 'little'); h = int.from_bytes(ham[4:8], 'little'); ofs = len(ham) - w * h * 4
+    koyu = acik = n = 0
+    for y in range(a[1], min(a[3], h), 3):
+        for x in range(max(a[0], 0), min(a[2], w), 3):
+            r, g, b = ham[ofs + (y*w+x)*4: ofs + (y*w+x)*4 + 3]; n += 1
+            koyu += max(r, g, b) < 35; acik += min(r, g, b) > 200
+    yaz(ad, 'pencere', a, 'koyu %%%d' % (100*koyu//n), 'açık %%%d' % (100*acik//n))
+def hareket(noktalar):
+    k = [f'input motionevent DOWN {noktalar[0][0]} {noktalar[0][1]}']
+    k += [f'input motionevent MOVE {x} {y}' for x, y in noktalar[1:]]
+    k += [f'input motionevent UP {noktalar[-1][0]} {noktalar[-1][1]}']
+    t = time.time(); sh('; '.join(k)); yaz('hareket süresi sn', round(time.time()-t, 1), 'nokta', len(noktalar))
+def merkezi():
+    a = pencere(); return (a[0]+a[2])//2, (a[1]+a[3])//2
+def cevir():
+    x, y = merkezi(); cx, cy = 540, y
+    hareket([(x, y)] + [(int(cx + 160*math.cos(i*2*math.pi/8)), int(cy + 160*math.sin(i*2*math.pi/8))) for i in range(21)])
+def salla():
+    x, y = merkezi()
+    hareket([(x, y)] + [(540 + (130 if i % 2 else -130), y) for i in range(14)])
+def dokunuslar(n):
+    x, y = merkezi(); sh('; '.join([f'input tap {x} {y}'] * n))
+komut('merhaba'); sh('input keyevent 3'); time.sleep(3)
+piksel('SAHRA'); kayit('başlangıç')
+def deneyler(ad):
+    cevir(); time.sleep(2.5); piksel(ad + ' dönerken'); time.sleep(8); kayit(ad + ' çevirme')
+    salla(); time.sleep(8); kayit(ad + ' sallama')
+    x, y = merkezi(); sh(f'input swipe {x} {y} {x+300} {y+300} 1500'); time.sleep(4); kayit(ad + ' taşıma')
+    dokunuslar(1); time.sleep(5); kayit(ad + ' tek dokunuş')
+    dokunuslar(3); time.sleep(8); kayit(ad + ' üç dokunuş')
+    dokunuslar(6); time.sleep(9); kayit(ad + ' altı dokunuş')
+deneyler('SAHRA')
+sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
+dokun('Robot görünümü'); dokun('Sahra 1 (elli)'); time.sleep(5)
 sh('input keyevent 4'); time.sleep(2)
-yaz('ana ekran', [m for m in metinler() if 'Elif' in m or 'Patron' in m or 'Asistan' in m])
-sh(f'am force-stop {P}'); time.sleep(2)
-komut('elif komik söz söyle'); komut('hey elif dini söz'); komut('sahra romantik söz')
-yaz('bildirim', re.findall(r'android.title=String \((.*?çalışıyor)', sh('dumpsys notification --noredact')))
-# Sırayla modu
+dokun('Sahra 1 ayarları', -1) if bul('Sahra 1 ayarları') is not None else dokun('Sahra 1 ayarları')
+time.sleep(3)
+yaz('panel', [m for m in metinler() if '▸' in m or 'Sahra' in m])
+dokun('▸  Hazır karışımlar'); dokun('Seni seviyorum'); 
+def tercih():
+    t = sh(f'run-as {P} cat shared_prefs/sahra.xml')
+    return re.findall(r'name="(model|s1\w+|davranis|tepki\w*)"(?: value="([^"]*)")?\s*/?>([^<\n]*)', t)
+yaz('hazır sonrası ayar', tercih())
+dokun('▾  Hazır karışımlar', -1); dokun('▸  El-kol:  Kalp yapma'); dokun('Sağ el selam')
+yaz('el-kol sonrası ayar', tercih())
+dokun("Sahra 1'i ilk ayarlarına döndür")
+yaz('sıfırlama sonrası ayar', tercih())
+kayit('Sahra 1 seçildi')
 sh(f'am force-stop {P}'); sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
-dokun('Boştayken gözlerde yazı'); dokun('Karışık (rastgele)')
-dokun('Hepsini kapat'); yaz('hepsi kapalı uyarısı', kaydirip('Hepsini aç') is not None and any('Bütün kategoriler kapalı' in m for m in metinler()))
-sh(f'am force-stop {P}')
-komut('güzel söz söyle')
-komut('komik söz söyle')
-sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
-dokun('Boştayken gözlerde yazı'); dokun('Hepsini aç'); dokun('Dini Sözler')
-sh(f'am force-stop {P}')
-for _ in range(7): komut('güzel söz söyle', 5)
-sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
-dokun('Boştayken gözlerde yazı')
-dokun('Yüklenen sözleri sil')
-yaz('silince', [m for m in metinler() if 'dosya' in m.lower()])
-sh(f'am force-stop {P}')
-komut('komik söz söyle')
+komut('merhaba'); sh('input keyevent 3'); time.sleep(8)
+piksel('SAHRA1'); kayit('Sahra 1 açılış')
+deneyler('SAHRA1')
+piksel('SAHRA1 sonda')
+x, y = merkezi(); sh(f'input swipe {x} {y} {x} {y} 900'); time.sleep(3)
+yaz('basılı tutunca ayarlar', f'{P}/.MainActivity' in sh('dumpsys activity activities | grep -i resumed'))
 yaz('çökme', P in adb('logcat', '-d', '-b', 'crash'))
 for l in adb('logcat', '-d', '-b', 'crash').splitlines()[:25]: yaz('log', l[:250])
