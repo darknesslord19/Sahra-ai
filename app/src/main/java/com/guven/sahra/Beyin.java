@@ -43,7 +43,7 @@ public final class Beyin {
     private static String temizle(String cumle) {
         String s = Komut.sade(cumle == null ? "" : cumle.trim().replaceAll("\\s+", " "))
                 .replaceAll("[!?,]+", "").replaceAll("\\.+$", "").trim();
-        s = s.replaceFirst("^(?:(?:hey|tamam) )?sahra\\b ?", "");
+        s = s.replaceFirst("^(?:(?:hey|tamam) )?" + Isim.desen() + "\\b ?", "");
         s = s.replaceFirst("^(?:(?:hadi|simdi|tamam|peki|evet|lutfen) )+", "");
         return s.replaceFirst("(?: (?:lutfen|bana|artik|hemen))+$", "").trim();
     }

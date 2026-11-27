@@ -18,7 +18,7 @@ public final class Ozel {
     /** Karşılaştırma biçimi: küçük harf, sade Türkçe, noktalama ve baştaki "sahra" olmadan. */
     public static String anahtar(String s) {
         return Komut.sade(s == null ? "" : s).replaceAll("[.,!?]+", " ").trim().replaceAll("\\s+", " ")
-                .replaceFirst("^(hey |tamam )?sahra ", "");
+                .replaceFirst("^(hey |tamam )?" + Isim.desen() + " ", "");
     }
 
     public static Ozel bul(List<Ozel> liste, String soylenen) {

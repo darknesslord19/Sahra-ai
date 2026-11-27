@@ -384,7 +384,7 @@ public class SahraService extends Service {
                 new Intent(this, SahraService.class).setAction(DURDUR), PendingIntent.FLAG_IMMUTABLE);
         Notification b = new Notification.Builder(this, "sahra")
                 .setSmallIcon(R.drawable.ikon)
-                .setContentTitle("Sahra çalışıyor")
+                .setContentTitle(Ayar.ad(this) + " çalışıyor")
                 .setContentText("Robota dokunup komut verin")
                 .setContentIntent(ac)
                 .addAction(new Notification.Action.Builder(null, "Kapat", dur).build())
@@ -1037,7 +1037,7 @@ public class SahraService extends Service {
     private void soyle(String metin) {
         android.util.Log.i("SAHRADBG", " SOZ " + metin.replace('\n', ' '));
         // Balonda hem duyulan komut hem cevap görünür
-        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
+        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\n" + Ayar.ad(this) + ": " + metin);
         duyulan = "";
         konus(metin);
     }
@@ -1169,7 +1169,7 @@ public class SahraService extends Service {
     }
 
     private void uzunSoyle(String metin) {
-        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
+        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\n" + Ayar.ad(this) + ": " + metin);
         duyulan = "";
         List<String> parcalar = Sayfa.bol(metin, 350);
         konus(parcalar.get(0));
@@ -1177,7 +1177,7 @@ public class SahraService extends Service {
     }
 
     private void acikSoyle(String metin, boolean paylasilabilir) {
-        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\nSahra: " + metin);
+        goster(duyulan.isEmpty() ? metin : "Siz: " + duyulan + "\n\n" + Ayar.ad(this) + ": " + metin);
         duyulan = "";
         konus(metin, paylasilabilir);
     }

@@ -53,7 +53,7 @@ final class Gemini {
 
     /** Soruyu, varsa önceki konuşmayla birlikte sorar. Ana iş parçacığında çağrılmaz. */
     static String sor(Context c, String soru, List<String[]> gecmis) throws Hata {
-        String talimat = "Adın Sahra, Türkçe konuşan bir telefon asistanısın. Kullanıcıya \"" + Ayar.hitap(c)
+        String talimat = "Adın " + Ayar.ad(c) + ", Türkçe konuşan bir telefon asistanısın. Kullanıcıya \"" + Ayar.hitap(c)
                 + "\" diye hitap et. Soruyu en fazla 5 kısa cümleyle, düz metin olarak yanıtla; "
                 + "yıldız, başlık, tablo ve bağlantı kullanma. Emin olmadığın ya da güncel veri gerektiren "
                 + "bir şeyi uydurma, bilmediğini söyle.";

@@ -10,6 +10,10 @@ Sahra son aramayı, çıkan sonuçları ve girdiği siteyi 10 dakika aklında tu
 
 **Yetenekler → Kayıt bilgilerim** bölümüne ad, soyad, e-posta, kullanıcı adı, telefon ve şifrenizi kaydedin. Kayıt sayfasında "formu doldur" deyin: Sahra site adını söyleyip onay ister, tanıdığı boş kutuları (şifre ve tekrarı dahil) doldurur; kayıt düğmesine siz basarsınız. Kart, kimlik ve doğrulama kodu kutuları, şifre değiştirme formları, banka sayfaları ve kilitli ekran doldurulmaz. Bilgiler yalnızca telefonda durur, yedeğe ve yapay zekâya gitmez; şifre Android Anahtar Deposu anahtarıyla şifrelenir. Ekran kontrolü gerekir. Onaydaki site adını kontrol edin: Sahra sitenin sahte olup olmadığını anlayamaz.
 
+## Ad ve hitap
+
+"Ad ve hitap" bölümünden asistanın size nasıl sesleneceğini ve asistanın adını değiştirebilirsiniz. Ad tek sözcük ve 2-15 harf olmalıdır; komut sözcükleri kabul edilmez. Sesle uyandırma yalnızca yeni adı bekler; yazılı komutta "Sahra" da kabul edilir. Telefondaki uygulama simgesinin adı Sahra olarak kalır. Telefonda uyandırma modeli her adı aynı doğrulukta tanımayabilir.
+
 ## Güzel sözler
 
 Ana ekrandaki "Boştayken gözlerde yazı" bölümünden kendi SQLite dosyanızı yükleyebilirsiniz (`kategoriler(ID, KatAdi)` ve `sozler(ID, KatId, Soz)` tabloları). Dosya depoya ya da APK'ya girmez, yalnızca telefonda saklanır.

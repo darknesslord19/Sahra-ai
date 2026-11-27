@@ -50,6 +50,27 @@ public class KomutTest {
                 && com.guven.sahra.Sozler.kategoriBul(adlar, "dini") == -1);
     }
 
+    private static void isimTestleri() {
+        denetle("ad gecerli", "Elif".equals(com.guven.sahra.Isim.gecerli(" elif "))
+                && "İnci".equals(com.guven.sahra.Isim.gecerli("inci")));
+        for (String kotu : new String[]{"", "a", "iki sözcük", "R2D2", "aç", "Tamam", "Ara", "saat", "a.b", "abcdefghijklmnop"}) {
+            denetle("ad gecersiz " + kotu, com.guven.sahra.Isim.gecerli(kotu) == null);
+        }
+        com.guven.sahra.Isim.ayarla("Ayşe");
+        t("Ayşe saat kaç", "SAAT", "");
+        t("hey ayse güzel söz söyle", "GUZEL_SOZ", "");
+        t("sahra komik söz söyle", "GUZEL_SOZ", "komik");
+        denetle("ad cumle", com.guven.sahra.Komut.coz("Ayşe, saat kaç").cumle.equals("saat kaç"));
+        denetle("ad uyandirma", "saat kaç".equals(com.guven.sahra.Uyandirma.komut("Ayşe saat kaç"))
+                && "".equals(com.guven.sahra.Uyandirma.komut("hey ayşe"))
+                && com.guven.sahra.Uyandirma.komut("sahra saat kaç") == null
+                && com.guven.sahra.Uyandirma.komut("ayşegül saat kaç") == null);
+        denetle("ad onay", com.guven.sahra.Onay.coz("evet ayşe") == 1);
+        com.guven.sahra.Isim.ayarla("aç");
+        denetle("ad varsayilana doner", com.guven.sahra.Isim.ad().equals("Sahra")
+                && "saat kaç".equals(com.guven.sahra.Uyandirma.komut("sahara saat kaç")));
+    }
+
     public static void main(String[] a) {
         t("Merhaba Sahra", "SELAM", "");
         t("Sahra", "SELAM", "");
@@ -363,6 +384,7 @@ public class KomutTest {
         denetle("form uc sifre", com.guven.sahra.Form.plan(java.util.Arrays.asList(new com.guven.sahra.Form.Kutu("p1", "", true, true),
                 new com.guven.sahra.Form.Kutu("p2", "", true, true), new com.guven.sahra.Form.Kutu("p3", "", true, true)), hepsiKayitli).isEmpty());
         sozTestleri();
+        isimTestleri();
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

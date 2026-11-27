@@ -62,7 +62,9 @@ public final class Komut {
     public static Komut coz(String girdi) {
         Komut k = ayristir(girdi);
         String c = girdi == null ? "" : girdi.trim().replaceAll("\\s+", " ");
-        if (sade(c).matches("(hey |tamam )?sahra\\b[ ,]+.*")) c = c.replaceFirst("^(?i)(\\S+ )?sahra[ ,]+", "");
+        // sade() karakter sayısını değiştirmediği için aynı konumdan kesilebilir
+        Matcher adi = Pattern.compile("^(?:hey |tamam )?" + Isim.desen() + "\\b[ ,]+(?=.)").matcher(sade(c));
+        if (adi.find()) c = c.substring(adi.end());
         k.cumle = c;
         return k;
     }
@@ -72,7 +74,7 @@ public final class Komut {
         String s = sade(ham);
 
         // Baştaki "sahra" ve "hey sahra" atılır
-        Matcher bas = Pattern.compile("^(hey |tamam )?sahra\\b[ ,]*").matcher(s);
+        Matcher bas = Pattern.compile("^(hey |tamam )?" + Isim.desen() + "\\b[ ,]*").matcher(s);
         if (bas.find()) {
             ham = ham.substring(bas.end());
             s = s.substring(bas.end());
@@ -123,7 +125,7 @@ public final class Komut {
         m = Pattern.compile("^(.+) yaz$").matcher(s);
         if (m.find()) return parca(Tur.YAZ, ham, m);
 
-        if (s.matches("(gunaydin)( sahra| hocam)?|(sabah|gunun|gunluk) ozeti?( ver| soyle| oku)?")) return k(Tur.OZET);
+        if (s.matches("(gunaydin)( " + Isim.desen() + "| hocam)?|(sabah|gunun|gunluk) ozeti?( ver| soyle| oku)?")) return k(Tur.OZET);
         Komut yeni = yeniKomut(ham, s);
         if (yeni != null) return yeni;
         if (s.matches("(merhaba|selam|gunaydin|iyi aksamlar|naber|nasilsin)( .*)?")) return k(Tur.SELAM);

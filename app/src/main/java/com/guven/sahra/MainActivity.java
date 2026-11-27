@@ -162,6 +162,9 @@ public class MainActivity extends Activity {
 
     private List<Bolum> bolumler() {
         List<Bolum> l = new ArrayList<Bolum>();
+        l.add(new Bolum("Kullanım", "Ad ve hitap", Ayar.ad(this) + " · " + Ayar.hitap(this), R.drawable.ik_ayar, new Runnable() {
+            @Override public void run() { adKarti(); }
+        }));
         l.add(new Bolum("Kullanım", "Yazılı komut", "Komut yazın, sürekli dinlemeyi açın", R.drawable.ik_klavye, new Runnable() {
             @Override public void run() { komutKarti(hazir()); }
         }));
@@ -183,10 +186,10 @@ public class MainActivity extends Activity {
         l.add(new Bolum("Anlama ve ses", "Sohbet hafızası", durumu("hafiza", false), R.drawable.ik_sohbet, new Runnable() {
             @Override public void run() { hafizaKarti(); }
         }));
-        l.add(new Bolum("Anlama ve ses", "\"Sahra\" uyandırma", durumu("uyan", false), R.drawable.ik_kulak, new Runnable() {
+        l.add(new Bolum("Anlama ve ses", "Adıyla uyandırma", durumu("uyan", false), R.drawable.ik_kulak, new Runnable() {
             @Override public void run() { uyandirmaKarti(); }
         }));
-        l.add(new Bolum("Anlama ve ses", "Sahra'nın sesi", "Telefon sesi, hız ve ton", R.drawable.ik_hoparlor, new Runnable() {
+        l.add(new Bolum("Anlama ve ses", "Asistanın sesi", "Telefon sesi, hız ve ton", R.drawable.ik_hoparlor, new Runnable() {
             @Override public void run() { sesKarti(); }
         }));
         l.add(new Bolum("Anlama ve ses", "Doğal çevrimiçi ses", durumu("sesNet", false), R.drawable.ik_mikrofon, new Runnable() {
@@ -236,7 +239,7 @@ public class MainActivity extends Activity {
         l.add(new Bolum("Robot", "Hava efektleri", durumu("efektAcik", true), R.drawable.ik_kar, new Runnable() {
             @Override public void run() { efektKarti(); }
         }));
-        l.add(new Bolum("Diğer", "Genel", "Hitap ve müzik uygulaması", R.drawable.ik_ayar, new Runnable() {
+        l.add(new Bolum("Diğer", "Genel", "Müzik uygulaması", R.drawable.ik_ayar, new Runnable() {
             @Override public void run() { genelKarti(); }
         }));
         l.add(new Bolum("Diğer", "Yedekleme (JSON)", "İndirilenler/Sahra", R.drawable.ik_yedek, new Runnable() {
@@ -473,7 +476,7 @@ public class MainActivity extends Activity {
     private static int modelYuzde = -1;
 
     private void uyandirmaKarti() {
-        aciklama("\"Sahra\" adı telefonda beklenir; ad duyulana kadar ses internete gönderilmez ve bip sesleri azalır. Önce yalnızca \"Sahra\" deyin, \"Efendim\" cevabından sonra komutunuzu söyleyin.");
+        aciklama("\"" + Ayar.ad(this) + "\" adı telefonda beklenir; ad duyulana kadar ses internete gönderilmez ve bip sesleri azalır. Önce yalnızca \"" + Ayar.ad(this) + "\" deyin, \"Efendim\" cevabından sonra komutunuzu söyleyin.");
         final boolean var = ModelIndir.hazir(this);
         if (!var) {
             modelDurumu = metin(modelYuzde >= 0 ? "İndiriliyor… %" + modelYuzde
@@ -736,7 +739,7 @@ public class MainActivity extends Activity {
         onizleme = robotGorunumu();
         k.addView(onizleme, new LinearLayout.LayoutParams(dp(112), dp(112)));
 
-        TextView ad = metin("Sahra", 28, METIN);
+        TextView ad = metin(Ayar.ad(this), 28, METIN);
         ad.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         ad.setGravity(Gravity.CENTER);
         k.addView(ad);
@@ -757,7 +760,7 @@ public class MainActivity extends Activity {
 
     private void anaDugme(final boolean hazir) {
         final boolean acik = SahraService.calisiyor;
-        TextView d = dugme(acik ? "Sahra'yı kapat" : "Sahra'yı başlat", !acik, new Runnable() {
+        TextView d = dugme(acik ? "Asistanı kapat" : "Asistanı başlat", !acik, new Runnable() {
             @Override
             public void run() {
                 if (acik) {
@@ -806,7 +809,7 @@ public class MainActivity extends Activity {
         satir.addView(g, l);
         ekle(kart, satir, 10, -2);
 
-        anahtar("Sürekli dinleme", "Yalnızca \"Sahra\" ile başlayan cümleye tepki verir. Sadece \"Sahra\" derseniz komutunuzu bekler. Adınızı ayırt etmek için mikrofon açık kalır ve duyulan ses telefonun tanıma hizmetine gidebilir. Pili daha çok harcar, bazı telefonlarda bip sesi çıkar.",
+        anahtar("Sürekli dinleme", "Yalnızca \"" + Ayar.ad(this) + "\" ile başlayan cümleye tepki verir. Sadece \"" + Ayar.ad(this) + "\" derseniz komutunuzu bekler. Adınızı ayırt etmek için mikrofon açık kalır ve duyulan ses telefonun tanıma hizmetine gidebilir. Pili daha çok harcar, bazı telefonlarda bip sesi çıkar.",
                 "surekli", false);
     }
 
@@ -1438,8 +1441,8 @@ public class MainActivity extends Activity {
                 }).show();
     }
 
-    private void genelKarti() {
-        ekle(kart, metin("Size nasıl hitap etsin?", 13, SOLUK), 6, -2);
+    private void adKarti() {
+        ekle(kart, metin("Size nasıl hitap etsin?", 15, METIN), 6, -2);
         EditText hitap = kutu("Güven hocam", Ayar.hitap(this));
         izle(hitap, new Yazildi() {
             @Override
@@ -1449,7 +1452,31 @@ public class MainActivity extends Activity {
             }
         });
         ekle(kart, hitap, 6, 48);
+        aciklama("Yazdığınız anda kaydedilir. Örnek: Güven hocam, patron, Ayşe Hanım.");
 
+        ekle(kart, metin("Asistanın adı", 15, METIN), 18, -2);
+        final EditText ad = kutu(Isim.VARSAYILAN, Ayar.ad(this));
+        ekle(kart, ad, 6, 48);
+        ekle(kart, dugme("Adı kaydet", true, new Runnable() {
+            @Override
+            public void run() {
+                String yazilan = ad.getText().toString().trim();
+                String yeni = yazilan.isEmpty() ? Isim.VARSAYILAN : Isim.gecerli(yazilan);
+                if (yeni == null) {
+                    uyar("Ad tek sözcük ve 2-15 harf olmalı; \"aç\", \"ara\", \"tamam\" gibi komut sözcükleri kullanılamaz.");
+                    return;
+                }
+                Ayar.al(MainActivity.this).edit().putString("ad", yeni).apply();
+                yenile();
+                ciz();
+                uyar("Asistanın adı artık " + yeni + ".");
+            }
+        }), 8, 46);
+        aciklama("Sesle uyandırırken bu adı söylersiniz. Bilinen bir ad seçin (örnek: Elif, Zeynep, Deniz); "
+                + "uydurma ya da yabancı adlar duyulmayabilir. Telefondaki uygulama simgesinin adı Sahra olarak kalır.");
+    }
+
+    private void genelKarti() {
         final List<Uygulamalar.Uygulama> hepsi = Uygulamalar.liste(this);
         String secili = "Seçilmedi";
         for (Uygulamalar.Uygulama u : hepsi) {
