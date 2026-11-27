@@ -30,7 +30,7 @@ import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
 import android.widget.CompoundButton;
 import android.widget.EditText;
-import android.widget.HorizontalScrollView;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -733,6 +733,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(-2, -2);
         l.topMargin = dp(10);
         k.addView(durum, l);
+        ekle(k, renkSirasi(), 10, -2);
         kok.addView(k, new LinearLayout.LayoutParams(-1, -2));
     }
 
@@ -898,30 +899,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(dp(96), dp(96));
         gl.gravity = Gravity.CENTER_HORIZONTAL;
         kart.addView(gorunumOnizleme, gl);
-        LinearLayout renkler = new LinearLayout(this);
-        for (int i = 0; i < Komut.RENKLER.length; i++) {
-            final String ad = Komut.RENKLER[i];
-            final View v = new View(this);
-            v.setTag(i);
-            v.setContentDescription(ad);
-            v.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View t) {
-                    Ayar.al(MainActivity.this).edit().putString("renk", ad).apply();
-                    renkIsaretle((LinearLayout) t.getParent());
-                    onizlemeBoya();
-                    yenile();
-                }
-            });
-            LinearLayout.LayoutParams l = new LinearLayout.LayoutParams(dp(40), dp(40));
-            l.rightMargin = dp(10);
-            renkler.addView(v, l);
-        }
-        renkIsaretle(renkler);
-        HorizontalScrollView yatay = new HorizontalScrollView(this);
-        yatay.setHorizontalScrollBarEnabled(false);
-        yatay.addView(renkler);
-        ekle(kart, yatay, 10, -2);
+        ekle(kart, renkSirasi(), 10, -2);
         kaydirici("Boyut", "boyut", 46, 184, 92, " dp", SahraService.YENILE);
     }
 
@@ -1418,12 +1396,36 @@ public class MainActivity extends Activity {
         ekle(kart, s, 6, -2);
     }
 
+    /** Dokuz rengin tamamını tek sırada, kaydırma gerektirmeden gösterir. */
+    private LinearLayout renkSirasi() {
+        LinearLayout renkler = new LinearLayout(this);
+        for (int i = 0; i < Komut.RENKLER.length; i++) {
+            final String ad = Komut.RENKLER[i];
+            FrameLayout hucre = new FrameLayout(this);
+            View daire = new View(this);
+            daire.setContentDescription(ad);
+            hucre.addView(daire, new FrameLayout.LayoutParams(dp(28), dp(28), Gravity.CENTER));
+            hucre.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View t) {
+                    Ayar.al(MainActivity.this).edit().putString("renk", ad).apply();
+                    renkIsaretle((LinearLayout) t.getParent());
+                    onizlemeBoya();
+                    yenile();
+                }
+            });
+            renkler.addView(hucre, new LinearLayout.LayoutParams(0, dp(44), 1f));
+        }
+        renkIsaretle(renkler);
+        return renkler;
+    }
+
     private void renkIsaretle(LinearLayout renkler) {
         for (int i = 0; i < renkler.getChildCount(); i++) {
             boolean secili = Komut.RENKLER[i].equals(Ayar.renk(this));
             GradientDrawable g = sekil(RENK_ORNEK[i], 20, 0);
             g.setStroke(dp(secili ? 3 : 1), secili ? VURGU : 0x55FFFFFF);
-            renkler.getChildAt(i).setBackground(g);
+            ((FrameLayout) renkler.getChildAt(i)).getChildAt(0).setBackground(g);
         }
     }
 
