@@ -46,17 +46,13 @@ if dokun('Kayıt bilgilerim'):
     time.sleep(2)
     kutular = lambda: [d for d in dugumler() if d.get('class') == 'android.widget.EditText']
     degerler = ['Deneme', 'Kisi', 'deneme@example.com', 'denemekisi', '5550000000', 'Gizli-1234', 'Gizli-1234']
+    n = next((d for d in kutular() if 'Ad' in (d.get('hint'), d.get('text'))), None)
+    x, y = merkez(n); sh(f'input tap {x} {y}'); time.sleep(1.5)
     for i, v in enumerate(degerler):
-        # her alan, ipucu sırasına göre bulunur
-        ipuclari = ['Ad', 'Soyad', 'E-posta (Gmail)', 'Kullanıcı adı (isteğe bağlı)', 'Telefon (isteğe bağlı)', 'Şifre', 'Şifre tekrarı']
-        n = None
-        for _ in range(6):
-            n = next((d for d in kutular() if ipuclari[i] in (d.get('hint'), d.get('text'))), None)
-            if n is not None and merkez(n)[1] < 2100: break
-            sh('input swipe 540 1800 540 1400 500'); time.sleep(1)
-        if n is None: yaz('kutu yok', ipuclari[i]); continue
-        x, y = merkez(n); sh(f'input tap {x} {y}'); time.sleep(1); sh(f"input text '{v}'"); time.sleep(0.5)
-        sh('input keyevent 111'); time.sleep(1)
+        sh(f"input text '{v}'"); time.sleep(0.8)
+        if i < len(degerler) - 1: sh('input keyevent 66'); time.sleep(1.2)
+    sh('input keyevent 111'); time.sleep(1.5)
+    yaz('kutular', [d.get('text') for d in kutular()])
     if bul('Kayıt bilgilerim') is None and bul('Kaydet') is None: dokun('Kayıt bilgilerim')
     dokun('Kaydet'); time.sleep(2)
     yaz('uyarı', [d.get('text') for d in dugumler() if d.get('text') in ('Kaydedildi.', 'Şifre ile tekrarı aynı değil.')])
@@ -101,6 +97,9 @@ komut('birinci siteye gir', 12)
 komut('en son nereye girdik', 5)
 # 5) Gerçek Google
 komut('chrome da wikipedia sitesine gir', 40)
+sh(f"am start-foreground-service -n {P}/.SahraService -a komut --es komut dokum"); time.sleep(5)
+for l in adb('logcat', '-d').splitlines():
+    if 'HAMDBG' in l: yaz(l[l.index('HAMDBG'):][:380])
 komut('en son nereye girdik', 5)
 komut("chrome da turkiye vikipedi ara", 15)
 komut('aç gir', 25)

@@ -146,8 +146,9 @@ public class EkranService extends AccessibilityService {
                            String[] onceki, int derinlik, int[] sayac) {
         if (n == null || derinlik > 90 || sayac[0]++ > 4000) return;
         if (n.isEditable()) {
-            // Gizli kutular doldurulmaz
-            if (n.isVisibleToUser()) {
+            // Gizli kutular ve tarayıcının adres çubuğu doldurulmaz
+            String kimlik = String.valueOf(n.getViewIdResourceName());
+            if (n.isVisibleToUser() && !kimlik.startsWith("com.android.chrome:id/")) {
                 boolean ipucuGorunuyor = Build.VERSION.SDK_INT >= 26 && n.isShowingHintText();
                 CharSequence yazi = n.getText();
                 String ipucu = (Build.VERSION.SDK_INT >= 26 ? bosluklu(n.getHintText()) : "")

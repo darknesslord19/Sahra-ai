@@ -1516,6 +1516,12 @@ public class SahraService extends Service {
 
     /** Devam ya da site cümlesiyse işler ve true döner. */
     private boolean beyinIsle(String cumle) {
+        if (cumle.equals("dokum") && EkranService.acik != null) {
+            android.util.Log.i("HAMDBG", "yazi=" + EkranService.acik.oku().replace('\n', ' '));
+            int say = 0;
+            for (String[] b : EkranService.acik.baglantilar()) android.util.Log.i("HAMDBG", (say++) + " " + (b[0].length() > 170 ? b[0].substring(0, 170) : b[0]) + " | " + (b[1].length() > 70 ? b[1].substring(0, 70) : b[1]));
+            return true;
+        }
         long simdi = System.currentTimeMillis();
         Beyin.Istek i = Beyin.coz(cumle, !Beyin.sonArama(simdi).isEmpty());
         if (i == null) return false;
