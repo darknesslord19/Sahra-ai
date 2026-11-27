@@ -10,7 +10,7 @@ public final class Jest {
     public static final String SALLA = "salla";
 
     // çevirme: bu süre içinde aynı yöne toplam bir buçuk tur
-    private static final long DONME_SURESI = 3000;
+    private static final long DONME_SURESI = 4000;
     private static final double DONME_ACISI = 3 * Math.PI;
     // sallama: bu süre içinde beş kez geri dönüş
     private static final long SALLAMA_SURESI = 1800;

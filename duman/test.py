@@ -72,38 +72,34 @@ def salla():
     hareket([(x, y)] + [(540 + (130 if i % 2 else -130), y) for i in range(14)])
 def dokunuslar(n):
     x, y = merkezi(); sh('; '.join([f'input tap {x} {y}'] * n))
-komut('merhaba'); sh('input keyevent 3'); time.sleep(3)
-piksel('SAHRA'); kayit('başlangıç')
-def deneyler(ad):
-    cevir(); time.sleep(2.5); piksel(ad + ' dönerken'); time.sleep(8); kayit(ad + ' çevirme')
-    salla(); time.sleep(8); kayit(ad + ' sallama')
-    x, y = merkezi(); sh(f'input swipe {x} {y} {x+300} {y+300} 1500'); time.sleep(4); kayit(ad + ' taşıma')
-    dokunuslar(1); time.sleep(5); kayit(ad + ' tek dokunuş')
-    dokunuslar(3); time.sleep(8); kayit(ad + ' üç dokunuş')
-    dokunuslar(6); time.sleep(9); kayit(ad + ' altı dokunuş')
-deneyler('SAHRA')
+def ekranAl():
+    ham = subprocess.run(['adb', 'exec-out', 'screencap'], capture_output=True, timeout=60).stdout
+    w = int.from_bytes(ham[0:4], 'little'); h = int.from_bytes(ham[4:8], 'little'); ofs = len(ham) - w * h * 4
+    return lambda x, y: tuple(ham[ofs + (y*w+x)*4: ofs + (y*w+x)*4 + 3])
+def gorunum(ad):
+    """Robot varken ve yokken aynı bölgeyi karşılaştırır; yalnızca oranlar yazılır."""
+    for tur in range(2):
+        komut('merhaba', 5); sh('input keyevent 3'); time.sleep(12)
+        a = pencere(); var = ekranAl()
+        sh(f'am force-stop {P}'); time.sleep(3); yok = ekranAl()
+        W = a[2] - a[0]; say = {k: [0, 0] for k in ('tum', 'orta', 'kose')}; acik = koyu = degisen = 0
+        for y in range(a[1], a[3], 3):
+            for x in range(a[0], a[2], 3):
+                p, q = var(x, y), yok(x, y); fark = max(abs(i-j) for i, j in zip(p, q)) > 18
+                r = (((x - a[0]) / W - .5)**2 + ((y - a[1]) / W - .5)**2) ** .5
+                for k, icinde in (('tum', True), ('orta', r < .2), ('kose', r > .62)):
+                    if icinde: say[k][0] += fark; say[k][1] += 1
+                if fark:
+                    degisen += 1; acik += min(p) > 170; koyu += max(p) < 45
+        yaz(ad, tur, 'pencere', W, ' '.join('%s değişen %%%d' % (k, 100*v[0]//max(1, v[1])) for k, v in say.items()),
+            '| değişenlerde açık %%%d koyu %%%d' % (100*acik//max(1, degisen), 100*koyu//max(1, degisen)))
+        sh(f'am start -n {P}/.MainActivity'); time.sleep(5)
+gorunum('SAHRA')
+komut('merhaba'); sh('input keyevent 3'); time.sleep(10); adb('logcat', '-c')
+for i in range(3):
+    cevir(); time.sleep(9); kayit('SAHRA çevirme %d' % i)
 sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
-dokun('Robot görünümü'); dokun('Sahra 1 (elli)'); time.sleep(5)
-sh('input keyevent 4'); time.sleep(2)
-dokun('Sahra 1 ayarları', -1) if bul('Sahra 1 ayarları') is not None else dokun('Sahra 1 ayarları')
-time.sleep(3)
-yaz('panel', [m for m in metinler() if '▸' in m or 'Sahra' in m])
-dokun('▸  Hazır karışımlar'); dokun('Seni seviyorum'); 
-def tercih():
-    t = sh(f'run-as {P} cat shared_prefs/sahra.xml')
-    return re.findall(r'name="(model|s1\w+|davranis|tepki\w*)"(?: value="([^"]*)")?\s*/?>([^<\n]*)', t)
-yaz('hazır sonrası ayar', tercih())
-dokun('▾  Hazır karışımlar', -1); dokun('▸  El-kol:  Kalp yapma'); dokun('Sağ el selam')
-yaz('el-kol sonrası ayar', tercih())
-dokun("Sahra 1'i ilk ayarlarına döndür")
-yaz('sıfırlama sonrası ayar', tercih())
-kayit('Sahra 1 seçildi')
-sh(f'am force-stop {P}'); sh(f'am start -n {P}/.MainActivity'); time.sleep(4)
-komut('merhaba'); sh('input keyevent 3'); time.sleep(8)
-piksel('SAHRA1'); kayit('Sahra 1 açılış')
-deneyler('SAHRA1')
-piksel('SAHRA1 sonda')
-x, y = merkezi(); sh(f'input swipe {x} {y} {x} {y} 900'); time.sleep(3)
-yaz('basılı tutunca ayarlar', f'{P}/.MainActivity' in sh('dumpsys activity activities | grep -i resumed'))
+dokun('Robot görünümü'); dokun('Sahra 1 (elli)'); time.sleep(5); sh('input keyevent 4'); time.sleep(2)
+gorunum('SAHRA1')
 yaz('çökme', P in adb('logcat', '-d', '-b', 'crash'))
 for l in adb('logcat', '-d', '-b', 'crash').splitlines()[:25]: yaz('log', l[:250])
