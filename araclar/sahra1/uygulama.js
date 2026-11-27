@@ -64,6 +64,33 @@ function neOynasin(){
  if(dinle){if(S.kip==='rastgele')goz='normal';if(S.poz==='oto')poz=S.konusuyor?'dinlen':'kulak'}
  return{goz,poz,hareket}}
 
+/* ---------- eller pencereden taşmasın ---------- */
+const BIRIM=()=>trs([0,0,0],[0,0,0],[1,1,1]);
+function ustMatris(d,aranan,M){if(d===aranan)return M;const m=mc(M,d.m||trs(d.t,d.r,d.s));
+ for(const k of d.alt){const x=ustMatris(k,aranan,m);if(x)return x}return null}
+/* Elin her noktası motorun kamerasıyla ekrana izdüşürülür; kenarı aşan kadar el içeri çekilir */
+function sigdir(el,ust,uzak){
+ const f=1/Math.tan(13*Math.PI/180),oran=tuval.width/tuval.height,fx=oran>=1?f/oran:f,fy=oran>=1?f:f*oran;
+ const e=Math.atan2(.35,uzak),D=Math.hypot(.35,uzak),ce=Math.cos(e),se=Math.sin(e),SINIR=.95;
+ let sol=0,sag=0,alt=0,usttasan=0;
+ const gez=(d,M)=>{if(d.gizli)return;const m=mc(M,d.m||trs(d.t,d.r,d.s));
+  if(d.geo){const P=d.geo.P;for(let i=0;i<P.length;i+=3){const x=P[i],y=P[i+1],z=P[i+2],
+    wx=m[0]*x+m[4]*y+m[8]*z+m[12],wy=m[1]*x+m[5]*y+m[9]*z+m[13],wz=m[2]*x+m[6]*y+m[10]*z+m[14],
+    vy=ce*wy-se*wz,uzaklik=D-(se*wy+ce*wz),yx=SINIR*uzaklik/fx,yy=SINIR*uzaklik/fy;
+    sag=Math.max(sag,wx-yx);sol=Math.max(sol,-yx-wx);usttasan=Math.max(usttasan,vy-yy);alt=Math.max(alt,-yy-vy)}}
+  for(const k of d.alt)gez(k,m)};
+ gez(el,ust);
+ const kx=sol-sag,ky=alt-usttasan;if(!kx&&!ky)return;
+ /* ekrandaki kaydırmayı elin bağlı olduğu düğümün eksenlerine çevir */
+ const w=[kx,ky*ce,-ky*se],a=ust[0],b=ust[4],c=ust[8],g=ust[1],h=ust[5],i=ust[9],j=ust[2],k=ust[6],l=ust[10];
+ const A=h*l-i*k,B=i*j-g*l,C=g*k-h*j,det=a*A+b*B+c*C;if(Math.abs(det)<1e-6)return;
+ const m=new Float32Array(el.m);
+ m[12]+=(A*w[0]+(c*k-b*l)*w[1]+(b*i-c*h)*w[2])/det;
+ m[13]+=(B*w[0]+(a*l-c*j)*w[1]+(c*g-a*i)*w[2])/det;
+ m[14]+=(C*w[0]+(b*j-a*k)*w[1]+(a*h-b*g)*w[2])/det;
+ el.m=m}
+
+const UZAKLIK=8.8;
 function ciz(dt){
  const w=Math.max(1,Math.round(innerWidth*Math.min(2,devicePixelRatio||1))),h=Math.max(1,Math.round(innerHeight*Math.min(2,devicePixelRatio||1)));
  if(tuval.width!==w||tuval.height!==h){tuval.width=w;tuval.height=h}
@@ -82,10 +109,11 @@ function ciz(dt){
  /* yazı okunurken gövde sade süzülür */
  const ht=tepki?T-tepkiBas:T*S.hiz/100;
  const o=durus(R,ht,n.poz,yazi?'suzul':n.hareket,simdi.yaw,dt);R.bas.r[1]+=simdi.basYaw*.4;
+ if(S.eller)for(const kl of R.kollar){const ust=ustMatris(R.kok,kl.el,BIRIM());if(ust&&kl.el.m)sigdir(kl.el,ust,UZAKLIK)}
  const d=R.d,I=halkaBul(T,dinle),gr=I.goz||(n.goz==='normal'&&!dinle?d.idle:d.goz);
  yuzCiz(R.ek.c,{t:T,goz:n.goz,kirp:kirpS,bakX:o.bakX+bakX+simdi.basYaw*.8,bakY:o.bakY+bakY,renk:gr,zemin:d.zemin,kose:d.kose,pay:d.pay+.01,halka:I.halka,agiz:S.agiz,konusuyor:S.konusuyor&&!yazi,yazi:yazi,yaziSure:T-yaziBas,yaziBitti:()=>{yazi=''}});
  motor.yukle(R.ek.tex,R.ek.cv);
- const l=I.halka.renkler;motor.ciz(R.kok,renk(l[Math.floor(T*.7)%l.length]).map(v=>v*I.halka.guc*I.guc),8.8)}
+ const l=I.halka.renkler;motor.ciz(R.kok,renk(l[Math.floor(T*.7)%l.length]).map(v=>v*I.halka.guc*I.guc),UZAKLIK)}
 
 function kare(z){requestAnimationFrame(kare);
  /* pil için saniyede en çok 30 kare */
