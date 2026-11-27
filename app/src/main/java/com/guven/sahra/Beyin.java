@@ -139,8 +139,10 @@ public final class Beyin {
     }
 
     /**
-     * {adres, görünen ad} listesinden arama sonuçlarını ayıklar: sırayı korur; Google'ın kendi
-     * bağlantılarını, reklamları, http dışı adresleri ve yinelenen siteleri atar.
+     * {adres, görünen ad} listesinden arama sonuçlarını {adres, görünen ad, alan adı} olarak ayıklar: sırayı korur;
+     * Google'ın kendi bağlantılarını, reklamları, http dışı adresleri ve yinelenen siteleri atar.
+     * Google sonuçları çoğu zaman kendi yönlendirme adresiyle (google.com/goto, /url) verir; o zaman
+     * site, sonucun görünen yazısındaki adres satırından okunur. Adres satırı olmayanlar atlanır.
      */
     public static List<String[]> sonuclar(List<String[]> baglantilar) {
         Map<String, String[]> l = new LinkedHashMap<String, String[]>();
@@ -149,13 +151,23 @@ public final class Beyin {
             if (!adres.matches("(?i)https?://.+")) continue;
             String etiket = b[1] == null ? "" : b[1];
             String sadeEtiket = Komut.sade(etiket);
-            if (sadeEtiket.startsWith("sponsorlu") || sadeEtiket.startsWith("reklam") || adres.contains("/aclk?")) continue;
+            if (sadeEtiket.startsWith("sponsorlu") || sadeEtiket.startsWith("sponsored") || sadeEtiket.startsWith("reklam") || adres.contains("/aclk?")) continue;
             String alan = alanAdi(adres);
+            if (googleSayfasi(alan)) alan = yonlendirme(adres) ? gorunenAlan(etiket) : "";
             if (alan.isEmpty() || googleSayfasi(alan) || !aramaDisi(alan)) continue;
             // Bir sitenin alt bağlantıları aynı sonuç sayılır
-            if (!l.containsKey(alan)) l.put(alan, new String[]{adres, etiket});
+            if (!l.containsKey(alan)) l.put(alan, new String[]{adres, etiket, alan});
         }
         return new ArrayList<String[]>(l.values());
+    }
+
+    private static boolean yonlendirme(String adres) {
+        return adres.matches("(?i)https://(?:www\\.)?google(?:\\.[a-z]{2,3}){1,2}/(?:goto|url)\\?.*");
+    }
+
+    private static String gorunenAlan(String etiket) {
+        Matcher m = Pattern.compile("https?://[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}").matcher(etiket);
+        return m.find() ? alanAdi(m.group()) : "";
     }
 
     private static boolean aramaDisi(String alan) {
@@ -171,7 +183,7 @@ public final class Beyin {
         String a = yalin(ad.replaceAll("\\b(?:sitesi|resmi|web)\\b", ""));
         if (a.length() < 2) return -1;
         for (int i = 0; i < liste.size(); i++) {
-            if (yalin(alanAdi(liste.get(i)[0])).contains(a)) return i;
+            if (yalin(liste.get(i)[2]).contains(a)) return i;
         }
         for (int i = 0; i < liste.size(); i++) {
             if (yalin(liste.get(i)[1]).contains(a)) return i;

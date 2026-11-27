@@ -274,6 +274,18 @@ public class KomutTest {
                 && !com.guven.sahra.Beyin.guvenliEslesme("com", "https://a.com/"));
         denetle("beyin cubuk", com.guven.sahra.Beyin.aramaAdresi("google.com/search?q=x") && com.guven.sahra.Beyin.aramaAdresi("")
                 && !com.guven.sahra.Beyin.aramaAdresi("sahibinden.com/ilan"));
+        // Gerçek Google'ın verdiği biçim: yönlendirme adresi + görünen yazıda site adresi
+        java.util.List<String[]> google = new java.util.ArrayList<String[]>();
+        for (String[] b : new String[][]{{"https://www.google.com/goto?url=AAA&gsessionid=x", "Wikipedia https://www.wikipedia.org Wikipedia"},
+                {"https://www.google.com/goto?url=BBB", "English English"},
+                {"https://www.google.com/goto?url=CCC", "Wikipedia https://en.wikipedia.org Wikipedia, the free encyclopedia"},
+                {"https://www.google.com.tr/url?q=DDD", "Sahibinden https://www.sahibinden.com › ilan İlanlar"},
+                {"https://www.google.com/search?q=x", "bak https://ornek.com"},
+                {"https://google.com.evil.net/goto?url=1", "Sahte https://banka.com"},
+                {"https://www.google.com/goto?url=EEE", "Sponsored https://reklam.com Reklam"}}) google.add(b);
+        java.util.List<String[]> g2 = com.guven.sahra.Beyin.sonuclar(google);
+        denetle("beyin google bicimi", g2.size() == 4 && g2.get(0)[2].equals("wikipedia.org") && g2.get(1)[2].equals("en.wikipedia.org")
+                && g2.get(2)[2].equals("sahibinden.com") && g2.get(3)[2].equals("google.com.evil.net"));
         com.guven.sahra.Beyin.aramaYapildi("x", 1000);
         com.guven.sahra.Beyin.sonuclariSakla(temiz, 1000);
         denetle("beyin sure", com.guven.sahra.Beyin.saklanan(2000).size() == 3 && com.guven.sahra.Beyin.sonArama(700000).isEmpty()

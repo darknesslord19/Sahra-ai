@@ -51,7 +51,7 @@ if dokun('Kayıt bilgilerim'):
     for i, v in enumerate(degerler):
         sh(f"input text '{v}'"); time.sleep(0.8)
         if i < len(degerler) - 1: sh('input keyevent 66'); time.sleep(1.2)
-    sh('input keyevent 111'); time.sleep(1.5)
+    if 'mInputShown=true' in sh('dumpsys input_method'): sh('input keyevent 4'); time.sleep(1.5)
     yaz('kutular', [d.get('text') for d in kutular()])
     if bul('Kayıt bilgilerim') is None and bul('Kaydet') is None: dokun('Kayıt bilgilerim')
     dokun('Kaydet'); time.sleep(2)
@@ -96,13 +96,15 @@ komut('sonraki siteye gir', 12)
 komut('birinci siteye gir', 12)
 komut('en son nereye girdik', 5)
 # 5) Gerçek Google
-komut('chrome da wikipedia sitesine gir', 40)
-sh(f"am start-foreground-service -n {P}/.SahraService -a komut --es komut dokum"); time.sleep(5)
-for l in adb('logcat', '-d').splitlines():
-    if 'HAMDBG' in l: yaz(l[l.index('HAMDBG'):][:380])
+def nerede(an):
+    adb('logcat', '-c'); sh(f"am start-foreground-service -n {P}/.SahraService -a komut --es komut dokum"); time.sleep(5)
+    for l in adb('logcat', '-d').splitlines():
+        if 'HAMDBG' in l and 'cubuk=' in l: yaz('   ', an, l[l.index('cubuk='):][:200]); break
+komut('chrome da wikipedia sitesine gir', 40); nerede('wikipedia sitesine gir sonrası')
+komut('sonraki siteye gir', 14); nerede('sonraki sonrası')
 komut('en son nereye girdik', 5)
-komut("chrome da turkiye vikipedi ara", 15)
-komut('aç gir', 25)
-komut('sonraki siteye gir', 12)
+komut("chrome da turkiye vikipedi ara", 25)
+komut('aç gir', 25); nerede('aç gir sonrası')
+komut('wikipedia sitesine gir', 14); nerede('öğrenilen site')
 yaz('çökme', P in adb('logcat', '-d', '-b', 'crash'))
 for l in adb('logcat', '-d', '-b', 'crash').splitlines()[:25]: yaz('log', l[:250])

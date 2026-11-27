@@ -1517,9 +1517,7 @@ public class SahraService extends Service {
     /** Devam ya da site cümlesiyse işler ve true döner. */
     private boolean beyinIsle(String cumle) {
         if (cumle.equals("dokum") && EkranService.acik != null) {
-            android.util.Log.i("HAMDBG", "yazi=" + EkranService.acik.oku().replace('\n', ' '));
-            int say = 0;
-            for (String[] b : EkranService.acik.baglantilar()) android.util.Log.i("HAMDBG", (say++) + " " + (b[0].length() > 170 ? b[0].substring(0, 170) : b[0]) + " | " + (b[1].length() > 70 ? b[1].substring(0, 70) : b[1]));
+            android.util.Log.i("HAMDBG", "cubuk=" + EkranService.acik.adresCubugu() + " paket=" + EkranService.acik.ondeki());
             return true;
         }
         long simdi = System.currentTimeMillis();
@@ -1618,7 +1616,7 @@ public class SahraService extends Service {
             if (sira > 0 || !ad.isEmpty()) {
                 secVeGir(eski, sira, ad);
             } else if (Beyin.konum() >= 0) {
-                soyle(Ayar.hitap(this) + ", " + Beyin.alanAdi(eski.get(Beyin.konum())[0])
+                soyle(Ayar.hitap(this) + ", " + eski.get(Beyin.konum())[2]
                         + " sitesine girdim. Başkası için “sonraki siteye gir” deyin.");
             } else {
                 secVeGir(eski, 1, "");
@@ -1680,13 +1678,20 @@ public class SahraService extends Service {
 
     private void sonucaGir(List<String[]> liste, int yer) {
         String adres = liste.get(yer)[0];
+        String alan = liste.get(yer)[2];
+        // Yönlendirme adresleri geçicidir; hatırlanan, sitenin kendi adresidir
+        String kalici = "https://" + alan + "/";
         Beyin.girildi(yer, System.currentTimeMillis());
         String ad = Beyin.hatirlananAd();
-        if (!ad.isEmpty()) Bellek.ogren(this, ad, adres);
-        siteAc(adres, Ayar.hitap(this) + ", " + Beyin.alanAdi(adres) + " sitesine giriyorum.");
+        if (!ad.isEmpty()) Bellek.ogren(this, ad, kalici);
+        siteAc(adres, kalici, Ayar.hitap(this) + ", " + alan + " sitesine giriyorum.");
     }
 
     private void siteAc(String adres, String soz) {
+        siteAc(adres, adres, soz);
+    }
+
+    private void siteAc(String adres, String hatirlanacak, String soz) {
         Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(adres)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 // Chrome aynı sekmede açsın, her seferinde yeni sekme birikmesin
                 .putExtra(Browser.EXTRA_APPLICATION_ID, "com.android.chrome");
@@ -1696,7 +1701,7 @@ public class SahraService extends Service {
             } catch (RuntimeException e) {
                 startActivity(i);
             }
-            Bellek.sonSite(this, adres);
+            Bellek.sonSite(this, hatirlanacak);
             soyle(soz);
         } catch (RuntimeException e) {
             soyle(Ayar.hitap(this) + ", tarayıcıyı açamadım.");
