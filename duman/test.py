@@ -38,7 +38,10 @@ def ayar(): return ' '.join(l.strip() for l in sh(f"run-as {P} sh -c 'cat shared
 def bas():
     for _ in range(5): sh('input swipe 540 900 540 2100 150')
     time.sleep(1)
-bas(); dokun("Sahra'yı başlat"); time.sleep(6)
+yaz('açılışta renk', [l.strip() for l in sh(f"run-as {P} sh -c 'cat shared_prefs/*.xml'").splitlines() if 'name="renk"' in l] or 'yok (beyaz)')
+bas()
+yaz('kaydırmadan sonra renk', [l.strip() for l in sh(f"run-as {P} sh -c 'cat shared_prefs/*.xml'").splitlines() if 'name="renk"' in l] or 'yok (beyaz)')
+dokun("Sahra'yı başlat"); time.sleep(6)
 yaz('hizmet', 'SahraService' in sh(f'dumpsys activity services {P}'))
 for deneme in range(3):
     bas()
@@ -55,6 +58,8 @@ def ornek():
         l.append(piksel(x - int(en*0.36), y)); time.sleep(0.4)
     return l
 if w is not None: yaz('kenar pikselleri (varsayılan)', ornek())
+def renk_ayari(an): yaz('gövde rengi ayarı', an, [l.strip() for l in sh(f"run-as {P} sh -c 'cat shared_prefs/*.xml'").splitlines() if 'name="renk"' in l] or 'yok (beyaz)')
+renk_ayari('panel açıkken')
 dokun('Zümrüt'); dokun('ışık kirmizi'); dokun('ışık yesil'); time.sleep(3); yaz('ayar', ayar())
 def ham():
     h = subprocess.run(['adb', 'exec-out', 'screencap'], capture_output=True).stdout
