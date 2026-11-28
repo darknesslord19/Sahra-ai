@@ -1680,6 +1680,9 @@ public class SahraService extends Service {
         List<AccessibilityNodeInfo> nodlar = new ArrayList<AccessibilityNodeInfo>();
         List<Secim.Oge> ogeler = new ArrayList<Secim.Oge>();
         e.secilebilirler(nodlar, ogeler);
+        StringBuilder dbg = new StringBuilder("OGE " + ogeler.size() + " ");
+        for (Secim.Oge o : ogeler) dbg.append("{").append(o.ad).append(" ").append(o.sol).append(",").append(o.ust).append(",").append(o.sag).append(",").append(o.alt).append(o.gorsel ? " g}" : "}");
+        android.util.Log.i("SAHRADBG", " " + dbg);
         if (uygulamaYok) {
             int y = Secim.adla(ogeler, k.metin);
             return y < 0 ? null : secileni(e, nodlar.get(y), ogeler.get(y).ad, "");
