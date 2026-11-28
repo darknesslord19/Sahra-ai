@@ -34,7 +34,8 @@ final class Yedek {
 
     private static final String[] ACMA_AYARLARI = {"surekli", "yaziAcik", "havaAcik", "sozAcik", "kurAcik", "efektAcik",
             "alarm", "shava", "skur", "stak", "ssoz", "sesYedek",
-            "isikGoz", "isikDinle", "sozKarisik", "tepkiler", "tepkiSes", "s1Eller"};
+            "isikGoz", "isikDinle", "sozKarisik", "tepkiler", "tepkiSes", "s1Eller",
+            "odakOtomatik", "odakAdsiz", "ogrenme", "gecmisAcik"};
 
     // ---------- Komutlar ----------
 
