@@ -28,7 +28,6 @@ def metinler(): return [x.get('text') for x in dugumler() if x.get('text')]
 yaz('kurulum', adb('install', '-r', 'app/build/outputs/apk/debug/app-debug.apk').strip())
 for i in ['RECORD_AUDIO', 'POST_NOTIFICATIONS']: sh(f'pm grant {P} android.permission.{i}')
 sh(f'appops set {P} SYSTEM_ALERT_WINDOW allow')
-sh(f'am start -n {P}/.MainActivity'); time.sleep(8)
 def komut(c, bekle=6):
     sh(f"am start-foreground-service -n {P}/.SahraService -a komut --es komut \"{c}\""); time.sleep(bekle)
 def kayit(baslik):
@@ -46,60 +45,60 @@ def pencere():
                 a = list(map(int, m.groups()))
                 if abs((a[2]-a[0]) - (a[3]-a[1])) <= 2 and a[2]-a[0] < 700: return a
     yaz('robot penceresi bulunamadı')
-def piksel(ad):
-    """Ekran görüntüsünü saklamadan robot penceresindeki koyu (vizör) ve açık (gövde) piksel oranını ölçer."""
-    a = pencere()
-    ham = subprocess.run(['adb', 'exec-out', 'screencap'], capture_output=True, timeout=60).stdout
-    w = int.from_bytes(ham[0:4], 'little'); h = int.from_bytes(ham[4:8], 'little'); ofs = len(ham) - w * h * 4
-    koyu = acik = n = 0
-    for y in range(a[1], min(a[3], h), 3):
-        for x in range(max(a[0], 0), min(a[2], w), 3):
-            r, g, b = ham[ofs + (y*w+x)*4: ofs + (y*w+x)*4 + 3]; n += 1
-            koyu += max(r, g, b) < 35; acik += min(r, g, b) > 200
-    yaz(ad, 'pencere', a, 'koyu %%%d' % (100*koyu//n), 'açık %%%d' % (100*acik//n))
-def hareket(noktalar):
-    k = [f'input motionevent DOWN {noktalar[0][0]} {noktalar[0][1]}']
-    k += [f'input motionevent MOVE {x} {y}' for x, y in noktalar[1:]]
-    k += [f'input motionevent UP {noktalar[-1][0]} {noktalar[-1][1]}']
-    t = time.time(); sh('; '.join(k)); yaz('hareket süresi sn', round(time.time()-t, 1), 'nokta', len(noktalar))
-def merkezi():
-    a = pencere(); return (a[0]+a[2])//2, (a[1]+a[3])//2
-def cevir():
-    x, y = merkezi(); cx, cy = 540, y
-    hareket([(x, y)] + [(int(cx + 160*math.cos(i*2*math.pi/8)), int(cy + 160*math.sin(i*2*math.pi/8))) for i in range(21)])
-def salla():
-    x, y = merkezi()
-    hareket([(x, y)] + [(540 + (130 if i % 2 else -130), y) for i in range(14)])
-def dokunuslar(n):
-    x, y = merkezi(); sh('; '.join([f'input tap {x} {y}'] * n))
-def ekranAl():
-    ham = subprocess.run(['adb', 'exec-out', 'screencap'], capture_output=True, timeout=60).stdout
-    w = int.from_bytes(ham[0:4], 'little'); h = int.from_bytes(ham[4:8], 'little'); ofs = len(ham) - w * h * 4
-    return lambda x, y: tuple(ham[ofs + (y*w+x)*4: ofs + (y*w+x)*4 + 3])
-def gorunum(ad):
-    """Robot varken ve yokken aynı bölgeyi karşılaştırır; yalnızca oranlar yazılır."""
-    for tur in range(2):
-        komut('merhaba', 5); sh('am start -a android.intent.action.DIAL'); time.sleep(14)
-        a = pencere(); var = ekranAl()
-        sh(f'am force-stop {P}'); sh('am start -a android.intent.action.DIAL'); time.sleep(5); yok = ekranAl()
-        W = a[2] - a[0]; say = {k: [0, 0] for k in ('tum', 'orta', 'kose')}; acik = koyu = degisen = 0
-        for y in range(a[1], a[3], 3):
-            for x in range(a[0], a[2], 3):
-                p, q = var(x, y), yok(x, y); fark = max(abs(i-j) for i, j in zip(p, q)) > 18
-                r = (((x - a[0]) / W - .5)**2 + ((y - a[1]) / W - .5)**2) ** .5
-                for k, icinde in (('tum', True), ('orta', r < .2), ('kose', r > .62)):
-                    if icinde: say[k][0] += fark; say[k][1] += 1
-                if fark:
-                    degisen += 1; acik += min(p) > 170; koyu += max(p) < 45
-        yaz(ad, tur, 'pencere', W, ' '.join('%s değişen %%%d' % (k, 100*v[0]//max(1, v[1])) for k, v in say.items()),
-            '| değişenlerde açık %%%d koyu %%%d' % (100*acik//max(1, degisen), 100*koyu//max(1, degisen)))
-        sh(f'am start -n {P}/.MainActivity'); time.sleep(5)
-gorunum('SAHRA')
-sh(f'am force-stop {P}')
-sh(f"""run-as {P} sed -i 's#</map>#<string name="model">sahra1</string></map>#' shared_prefs/sahra.xml""")
-yaz('model ayarı', re.findall(r'name="model">(\w+)', sh(f'run-as {P} cat shared_prefs/sahra.xml')))
-gorunum('SAHRA1')
-komut('merhaba'); sh('input keyevent 3'); time.sleep(10); adb('logcat', '-c')
-cevir(); time.sleep(9); kayit('SAHRA1 çevirme (yeni boyut)')
+
+import http.server, threading
+ADLAR = ['Mavi Deniz', 'Dağ Yolu', 'Yıldız Gecesi', 'Sessiz Orman', 'Kırmızı Balon', 'Eski Liman']
+istekler = []
+class S(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def ver(self, tip, v):
+        self.send_response(200); self.send_header('Content-Type', tip); self.send_header('Cache-Control', 'no-store'); self.end_headers(); self.wfile.write(v.encode())
+    def do_GET(self):
+        p = self.path
+        if p.startswith('/afis'):
+            return self.ver('image/svg+xml', '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300"><rect width="200" height="300" fill="#%d68"/></svg>' % (2 + int(p[-1])))
+        if p != '/favicon.ico': istekler.append(p)
+        bas = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font-family:sans-serif}.g{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}.g a{display:block}.g img{width:100%;aspect-ratio:2/3;display:block}</style>'
+        if p.startswith('/film/'):
+            i = int(p[6]); return self.ver('text/html', bas + '<h2>%s</h2><button style="font-size:24px;margin:20px;padding:20px" onclick="fetch(\'/oynatildi/%d\')">Hemen İzle</button>' % (ADLAR[i-1], i))
+        if p == '/':
+            k = ''.join('<a href="/film/%d"><img src="/afis%d" alt="%s"></a>' % (i+1, i, a) for i, a in enumerate(ADLAR))
+            return self.ver('text/html', bas + '<p><a href="/menu">Menü</a> Deneme afiş sayfası</p><a href="/serit"><img src="/afis1" alt="Duyuru" style="width:100%;height:50px"></a><div class="g">' + k + '</div>')
+        self.ver('text/plain', 'ok')
+srv = http.server.ThreadingHTTPServer(('0.0.0.0', 8765), S)
+threading.Thread(target=srv.serve_forever, daemon=True).start()
+sh("echo 'chrome --disable-fre --no-default-browser-check --no-first-run' > /data/local/tmp/chrome-command-line")
+sh('am set-debug-app --persistent com.android.chrome')
+sh(f'am start -n {P}/.MainActivity'); time.sleep(8)
+sh(f'settings put secure enabled_accessibility_services {P}/{P}.EkranService'); sh('settings put secure accessibility_enabled 1'); time.sleep(4)
+def ac(yol='/'):
+    sh(f'am start -a android.intent.action.VIEW -d http://10.0.2.2:8765{yol} com.android.chrome'); time.sleep(9)
+def on():
+    return re.findall(r'mCurrentFocus=Window\{\S+ \S+ ([^}]+)\}', sh('dumpsys window'))[:1]
+def dene(baslik, cumle, bekle=10):
+    istekler.clear(); adb('logcat', '-c'); komut(cumle, bekle); kayit(baslik + ' :: ' + cumle); yaz('   istekler', list(istekler), 'önde', on())
+komut('merhaba', 5)
+sh(f'am start -n {P}/.MainActivity'); time.sleep(3)
+dene('Sahra ekranındayken', 'ordaki bir filmi oynat', 7)
+sh('input keyevent 3'); time.sleep(2)
+ac(); yaz('ilk açılış istekler', list(istekler), 'önde', on()); ac(); time.sleep(5)
+dene('liste', 'ordaki bir filmi oynat')
+dene('film sayfası', 'oynat', 7)
+dene('film sayfasında bir filmi oynat', 'ordaki bir filmi oynat', 7)
+dene('geri', 'geri', 7)
+dene('ikinci', 'ikinci filmi aç')
+dene('geri', 'geri', 7)
+dene('ikinciye gir', 'ikinciye gir')
+dene('geri', 'geri', 7)
+dene('adla aç', 'Dağ Yolu aç')
+dene('geri', 'geri', 7)
+dene('adla film', 'Yıldız Gecesi filmini aç')
+dene('geri', 'geri', 7)
+dene('afişe tıkla', '4. afişe tıkla')
+dene('geri', 'geri', 7)
+dene('olmayan', 'Olmayan Hikaye filmini aç', 7)
+dene('fazla sıra', '9. filmi aç', 7)
+dene('son', 'sondaki filmi aç')
+dene('youtube açıkça', "youtube da bir film aç", 9)
 yaz('çökme', P in adb('logcat', '-d', '-b', 'crash'))
 for l in adb('logcat', '-d', '-b', 'crash').splitlines()[:25]: yaz('log', l[:250])
