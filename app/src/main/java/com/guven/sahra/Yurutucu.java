@@ -167,11 +167,24 @@ final class Yurutucu {
         return true;
     }
 
+    /** Kumanda modunda yalnızca medya sesi değişir. */
+    void medyaSesi(Kumanda.Tur t) {
+        if (t != Kumanda.Tur.SES_KAPAT) ses.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, AudioManager.FLAG_SHOW_UI);
+        if (t == Kumanda.Tur.SES_KAPAT) {
+            ses.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI);
+            return;
+        }
+        for (int i = 0; i < 2; i++) {
+            ses.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                    t == Kumanda.Tur.SES_AZALT ? AudioManager.ADJUST_LOWER : AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI);
+        }
+    }
+
     void oynatTusu() {
         tus(KeyEvent.KEYCODE_MEDIA_PLAY);
     }
 
-    private void tus(int kod) {
+    void tus(int kod) {
         ses.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, kod));
         ses.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, kod));
     }

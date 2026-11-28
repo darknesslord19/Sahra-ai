@@ -12,6 +12,10 @@ import android.provider.Browser;
 import android.speech.tts.Voice;
 import android.text.TextUtils;
 import android.content.Intent;
+import java.util.Map;
+import android.view.KeyEvent;
+import android.graphics.Rect;
+import android.accessibilityservice.AccessibilityService;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
@@ -62,6 +66,7 @@ public class SahraService extends Service {
     static final String SES_SIRADAKI = "ses_siradaki";
     static final String NET_SES_DENE = "net_ses_dene";
     static final String DINLE = "dinle";
+    static final String DINLEME_DEGISTIR = "dinlemeDegistir";
     static final String SOR_VE_YAP = "sor_ve_yap";
     static boolean calisiyor;
 
@@ -320,6 +325,12 @@ public class SahraService extends Service {
         if (intent != null && intent.hasExtra(KOMUT)) {
             calistir(intent.getStringExtra(KOMUT));
         }
+        if (DINLEME_DEGISTIR.equals(eylem)) {
+            sustur();
+            dinlemeKipi(!surekli());
+            duyulan = "";
+            soyle(surekli() ? "Arkada dinliyorum " + Ayar.hitap(this) + "." : "Dokununca dinleyeceğim " + Ayar.hitap(this) + ".");
+        }
         if (SES_SIRADAKI.equals(eylem)) sesDegistir();
         if (DINLE.equals(eylem)) {
             sustur();
@@ -339,6 +350,8 @@ public class SahraService extends Service {
             veriYenile();
             if (!Pano.acik(this, "efektAcik")) efektKaldir();
             motorHatasi = false;
+            bildirim();
+            if (!ayar("odakOtomatik", true)) odakBitir();
             if (!elleDinleme) dinlemeyiBirak();
             if (surekli()) ana.postDelayed(yenidenDinle, 500);
         }
@@ -349,6 +362,7 @@ public class SahraService extends Service {
     public void onDestroy() {
         calisiyor = false;
         ana.removeCallbacksAndMessages(null);
+        odakBitir();
         BildirimService.dinleyen = null;
         Hafiza.temizle();
         if (motor != null) motor.kapat();
@@ -387,7 +401,10 @@ public class SahraService extends Service {
         Notification b = new Notification.Builder(this, "sahra")
                 .setSmallIcon(R.drawable.ikon)
                 .setContentTitle(Ayar.ad(this) + " çalışıyor")
-                .setContentText("Robota dokunup komut verin")
+                .setContentText(surekli() ? "Arkada dinliyor" : "Robota dokunup komut verin")
+                .addAction(new Notification.Action.Builder(null, surekli() ? "Dokununca dinle" : "Arkada dinle",
+                        PendingIntent.getService(this, 2, new Intent(this, SahraService.class).setAction(DINLEME_DEGISTIR),
+                                PendingIntent.FLAG_IMMUTABLE)).build())
                 .setContentIntent(ac)
                 .addAction(new Notification.Action.Builder(null, "Kapat", dur).build())
                 .setOngoing(true)
@@ -793,6 +810,13 @@ public class SahraService extends Service {
         }
     }
 
+    /** Ses tanımanın seçenekleri arasından öğretilenlere ve geçmişe göre karar verir. */
+    private String karar(List<String> secenekler) {
+        // Bir soruya cevap beklenirken söylenen olduğu gibi alınır
+        if (bekleyenGirdi != null) return secenekler.get(0);
+        return Ogrenme.sec(secenekler, Profil.ogrenilen(this), Profil.gecmis(this));
+    }
+
     private final class Dinleyici implements RecognitionListener {
         @Override
         public void onResults(Bundle sonuclar) {
@@ -806,10 +830,16 @@ public class SahraService extends Service {
             durum();
             if (l != null && !l.isEmpty()) {
                 if (elle) {
-                    calistir(l.get(0));
+                    calistir(karar(l));
                 } else {
                     // "Sahra" ile başlamayan her şey iz bırakmadan atılır
                     String komut = Uyandirma.komut(l);
+                    // Kumanda modunda kısa kumanda sözleri adsız da kabul edilir
+                    if (komut == null && odak && ayar("odakAdsiz", true) && Kumanda.adsizOlur(Kumanda.coz(l.get(0)))
+                            && EkranService.acik != null && baskaUygulamaOnde(EkranService.acik.hedefPaket())) {
+                        Kumanda.Istek ki = Kumanda.coz(l.get(0));
+                        if (ki.tur != Kumanda.Tur.SEC || vurguOge != null) komut = l.get(0);
+                    }
                     if (komut != null && komut.isEmpty()) {
                         komutBekle = true;
                         duyulan = "";
@@ -889,12 +919,384 @@ public class SahraService extends Service {
             String yalin = Uyandirma.komut(cumle);
             if (girdi.al(yalin == null || yalin.isEmpty() ? cumle : yalin)) return;
         }
-        Ozel ozel = Ozel.bul(Yedek.komutlar(this), cumle);
+        if (ogrenmeKomutu(cumle)) return;
+        isle(cumle);
+    }
+
+    /** Öğretilmiş sözü, kendi komutunu, kumanda sözünü ve olağan komutları sırayla dener. */
+    private void isle(String cumle) {
+        String soylenen = cumle;
+        Map<String, String> ogrenilen = Profil.ogrenilen(this);
+        String anahtar = Ogrenme.bul(ogrenilen, cumle);
+        if (anahtar != null && Ogrenme.hedefUygun(ogrenilen.get(anahtar))) cumle = ogrenilen.get(anahtar);
+        Ozel ozel = Ozel.bul(Yedek.komutlar(this), soylenen);
         if (ozel != null) {
             ozelCalistir(ozel);
-        } else if (!beyinIsle(cumle)) {
-            tekKomut(Komut.coz(cumle), null);
+            return;
         }
+        if (anahtar != null && (ozel = Ozel.bul(Yedek.komutlar(this), cumle)) != null) {
+            ozelCalistir(ozel);
+            return;
+        }
+        Komut k = Komut.coz(cumle);
+        boolean anlasildi = true;
+        if (!kumandaIsle(cumle) && !beyinIsle(cumle)) {
+            anlasildi = k.tur != Komut.Tur.BILINMIYOR || Secim.coz(cumle) != null;
+            tekKomut(k, null);
+        }
+        if (!anlasildi) return;
+        sonKomut = Ogrenme.hedefUygun(cumle) ? cumle : "";
+        if (Ogrenme.gecmiseUygun(k.tur)) Profil.kullanildi(this, cumle);
+        ogrenmeyiOner(soylenen, cumle);
+    }
+
+    // ---------- Öğrenme ----------
+
+    private String sonKomut = "";
+    private String anlasilmayan = "";
+    private long anlasilmayanZaman;
+
+    private boolean ogrenmeKomutu(String cumle) {
+        final Ogrenme.Istek i = Ogrenme.coz(cumle);
+        if (i == null) return false;
+        final String h = Ayar.hitap(this);
+        if (i.tur == Ogrenme.Tur.TEKRAR) {
+            if (sonKomut.isEmpty()) soyle(h + ", tekrarlayabileceğim bir komut yok.");
+            else isle(sonKomut);
+            return true;
+        }
+        if (!Profil.ogrenmeAcik(this)) {
+            soyle(h + ", öğrenme kapalı. Hafıza ve profil bölümünden açabilirsiniz.");
+            return true;
+        }
+        anlasilmayan = "";
+        final Map<String, String> liste = Profil.hepsi(this);
+        switch (i.tur) {
+            case OGRET:
+                if (!Ogrenme.sozUygun(i.soz)) {
+                    soyle(h + ", bu sözü öğrenemem. Biraz daha uzun ve farklı bir söz seçin.");
+                } else if (!Ogrenme.hedefUygun(i.hedef) && Ozel.bul(Yedek.komutlar(this), i.hedef) == null) {
+                    soyle(h + ", \"" + i.hedef + "\" komutunu bir söze bağlayamıyorum. Bildiğim bir komut söyleyin. "
+                            + "Mesaj gönderme, yazma, form doldurma ve silme bağlanmaz.");
+                } else {
+                    onaySor("\"" + i.soz + "\" dediğinizde \"" + i.hedef + "\" yapayım mı, " + h + "?", new Runnable() {
+                        @Override
+                        public void run() {
+                            Profil.ogren(SahraService.this, i.soz, i.hedef);
+                            soyle("Öğrendim " + h + ".");
+                        }
+                    });
+                }
+                break;
+            case LISTE: {
+                if (liste.isEmpty()) {
+                    soyle(h + ", henüz bir şey öğrenmedim. Örneğin, film zamanı deyince YouTube aç, diyebilirsiniz.");
+                    break;
+                }
+                StringBuilder s = new StringBuilder(liste.size() + " söz öğrendim.");
+                for (Map.Entry<String, String> g : liste.entrySet()) s.append("\n").append(g.getKey()).append(": ").append(g.getValue()).append(".");
+                uzunSoyle(s.toString());
+                break;
+            }
+            case SONUNCUYU_UNUT: {
+                String son = null;
+                for (String a : liste.keySet()) son = a;
+                if (son == null) {
+                    soyle(h + ", unutacağım bir şey yok.");
+                } else {
+                    Profil.unut(this, son);
+                    soyle("\"" + son + "\" sözünü unuttum " + h + ".");
+                }
+                break;
+            }
+            default:
+                onaySor("Öğrettiğiniz bütün sözler silinsin mi, " + h + "?", new Runnable() {
+                    @Override
+                    public void run() {
+                        Profil.ogrenilenleriSil(SahraService.this);
+                        soyle("Hepsini unuttum " + h + ".");
+                    }
+                });
+        }
+        return true;
+    }
+
+    /** Az önce anlaşılmayan sözün ardından anlaşılan bir komut geldiyse, onay isteyip ikisini bağlar. */
+    private void ogrenmeyiOner(String soylenen, final String hedef) {
+        final String eski = anlasilmayan;
+        if (eski.isEmpty()) return;
+        anlasilmayan = "";
+        if (System.currentTimeMillis() - anlasilmayanZaman > 45000 || !Profil.ogrenmeAcik(this)
+                || Ogrenme.anahtar(eski).equals(Ogrenme.anahtar(soylenen)) || !Ogrenme.hedefUygun(hedef)) return;
+        final int sira = komutSirasi;
+        // Komutun kendi cevabı bitsin diye soru biraz sonra sorulur
+        ana.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (!calisiyor || sira != komutSirasi || bekleyenGirdi != null) return;
+                if (konusuyor) {
+                    ana.postDelayed(this, 1000);
+                    return;
+                }
+                onaySor("Bundan sonra \"" + eski + "\" dediğinizde de \"" + hedef + "\" yapayım mı?", new Runnable() {
+                    @Override
+                    public void run() {
+                        Profil.ogren(SahraService.this, eski, hedef);
+                        soyle("Öğrendim " + Ayar.hitap(SahraService.this) + ".");
+                    }
+                });
+            }
+        }, 2500);
+    }
+
+    // ---------- Kumanda (odak) modu ----------
+
+    private boolean odak;
+    private Vurgu vurgu;
+    private AccessibilityNodeInfo vurguNod;
+    private Secim.Oge vurguOge;
+    private final Runnable vurguSil = new Runnable() {
+        @Override
+        public void run() {
+            vurguBirak();
+        }
+    };
+
+    private void vurguBirak() {
+        ana.removeCallbacks(vurguSil);
+        if (vurgu != null) vurgu.kaldir();
+        vurguNod = null;
+        vurguOge = null;
+    }
+
+    private void odakBitir() {
+        odak = false;
+        vurguBirak();
+    }
+
+    /** Uygulama ya da site açıldıktan sonra kısa komutlar o ekrana uygulanır. */
+    private void odakBaslat() {
+        vurguBirak();
+        if (ayar("odakOtomatik", true) && EkranService.acik != null) odak = true;
+    }
+
+    /** Sessiz geri bildirim: film sesinin üstüne konuşulmaz, yalnızca balonda gösterilir. */
+    private void kumandaBildir(String metin) {
+        duyulan = "";
+        tepkiKonusuyor = false;
+        sustur();
+        goster(metin);
+        ana.removeCallbacks(yaziGizle);
+        ana.postDelayed(yaziGizle, 2200);
+        if (surekli()) {
+            ana.removeCallbacks(yenidenDinle);
+            ana.postDelayed(yenidenDinle, 700);
+        }
+    }
+
+    private boolean kumandaIsle(String cumle) {
+        Kumanda.Istek i = Kumanda.coz(cumle);
+        if (i == null) return false;
+        EkranService e = EkranService.acik;
+        boolean gezinme = i.tur == Kumanda.Tur.ILERI || i.tur == Kumanda.Tur.ONCEKI
+                || i.tur == Kumanda.Tur.ALT_SATIR || i.tur == Kumanda.Tur.UST_SATIR;
+        // İçinde "afiş" geçen gezinme sözü ya da "kumanda modu" demek modu kendiliğinden açar
+        boolean acar = i.tur == Kumanda.Tur.BASLAT || i.tur == Kumanda.Tur.KATEGORI || i.tur == Kumanda.Tur.KATEGORILER
+                || gezinme && i.soz.contains("afis");
+        if (!odak && !acar) return false;
+        if (e == null) {
+            if (i.tur != Kumanda.Tur.BASLAT) return false;
+            soyle(Ayar.hitap(this) + ", kumanda modu için Sahra uygulamasından ekran kontrolü iznini açın.");
+            return true;
+        }
+        if (i.tur == Kumanda.Tur.CIK) {
+            odakBitir();
+            soyle("Kumanda modu kapandı " + Ayar.hitap(this) + ".");
+            return true;
+        }
+        if (i.tur == Kumanda.Tur.ANA_EKRAN) {
+            odakBitir();
+            return false;
+        }
+        if (!baskaUygulamaOnde(e.hedefPaket())) {
+            odakBitir();
+            if (i.tur != Kumanda.Tur.BASLAT) return false;
+            soyle(Ayar.hitap(this) + ", önce bir uygulama ya da site açın.");
+            return true;
+        }
+        odak = true;
+        switch (i.tur) {
+            case BASLAT:
+                soyle("Kumanda modu açık " + Ayar.hitap(this) + ". İlerle, aç, geri, kaydır, oynat ve durdur diyebilirsiniz. Bitirmek için kumandayı kapat deyin.");
+                return true;
+            case ILERI:
+            case ONCEKI:
+            case ALT_SATIR:
+            case UST_SATIR:
+                gez(e, i.tur, true);
+                return true;
+            case SEC:
+                if (vurguOge == null) return false;
+                vurguluyuAc(e);
+                return true;
+            case OYNAT:
+                if (vurguOge != null) {
+                    vurguluyuAc(e);
+                } else if (dugmeyeDokun(e, "(?:oynat|play|izle|hemen izle|simdi izle|filmi izle|videoyu oynat(?: k)?|video oynat|play video(?: k)?|devam et|oynatmayi baslat)")) {
+                    kumandaBildir("▶ Oynatılıyor");
+                } else {
+                    new Yurutucu(this).oynatTusu();
+                    kumandaBildir("▶ Oynat tuşu gönderildi");
+                }
+                return true;
+            case DURDUR:
+                if (konusuyor) return false;
+                if (!dugmeyeDokun(e, "(?:duraklat|durdur|pause|videoyu duraklat(?: k)?|pause video(?: k)?)")) {
+                    new Yurutucu(this).tus(KeyEvent.KEYCODE_MEDIA_PAUSE);
+                }
+                kumandaBildir("⏸ Durduruldu");
+                return true;
+            case GERI:
+                vurguBirak();
+                e.performGlobalAction(AccessibilityService.GLOBAL_ACTION_BACK);
+                kumandaBildir("← Geri");
+                return true;
+            case KAYDIR_ASAGI:
+            case KAYDIR_YUKARI:
+                vurguBirak();
+                e.kaydir(i.tur == Kumanda.Tur.KAYDIR_ASAGI);
+                kumandaBildir(i.tur == Kumanda.Tur.KAYDIR_ASAGI ? "↓ Kaydırıldı" : "↑ Kaydırıldı");
+                return true;
+            case ILERI_SAR:
+            case GERI_SAR:
+                new Yurutucu(this).tus(i.tur == Kumanda.Tur.ILERI_SAR ? KeyEvent.KEYCODE_MEDIA_FAST_FORWARD : KeyEvent.KEYCODE_MEDIA_REWIND);
+                kumandaBildir(i.tur == Kumanda.Tur.ILERI_SAR ? "⏩ İleri sarma gönderildi" : "⏪ Geri sarma gönderildi");
+                return true;
+            case SES_AC:
+            case SES_ARTIR:
+            case SES_AZALT:
+            case SES_KAPAT:
+                new Yurutucu(this).medyaSesi(i.tur);
+                kumandaBildir(i.tur == Kumanda.Tur.SES_KAPAT ? "🔇 Ses kapatıldı"
+                        : i.tur == Kumanda.Tur.SES_AZALT ? "🔉 Ses kısıldı" : "🔊 Ses açıldı");
+                return true;
+            case TAM_EKRAN:
+                kumandaBildir(dugmeyeDokun(e, "(?:tam ekran(?: f)?|tam ekran yap|fullscreen|full screen|enter full ?screen(?: f)?)")
+                        ? "Tam ekran" : "Tam ekran düğmesini göremedim; videoya bir kez dokunup tekrar deyin.");
+                return true;
+            case KATEGORILER:
+                vurguBirak();
+                kumandaBildir(dugmeyeDokun(e, "(?:kategoriler|kategori|film kategorileri|turler|film turleri|menu|menuyu ac|ana menu|open menu)")
+                        ? "Kategoriler açılıyor" : "Kategori ya da menü düğmesi göremedim.");
+                return true;
+            case KATEGORI: {
+                vurguBirak();
+                List<AccessibilityNodeInfo> nodlar = new ArrayList<AccessibilityNodeInfo>();
+                List<Secim.Oge> ogeler = new ArrayList<Secim.Oge>();
+                e.secilebilirler(nodlar, ogeler);
+                int y = Secim.adla(ogeler, i.ad);
+                if (y >= 0 && e.dokun(nodlar.get(y))) kumandaBildir(i.ad + " açılıyor");
+                else soyle(Ayar.hitap(this) + ", ekranda " + i.ad + " kategorisini göremedim. Önce kategoriler deyin ya da kaydırın.");
+                return true;
+            }
+            default:
+                return false;
+        }
+    }
+
+    private boolean dugmeyeDokun(EkranService e, String desen) {
+        List<AccessibilityNodeInfo> nodlar = new ArrayList<AccessibilityNodeInfo>();
+        List<Secim.Oge> ogeler = new ArrayList<Secim.Oge>();
+        e.secilebilirler(nodlar, ogeler);
+        int y = Secim.dugme(ogeler, desen);
+        return y >= 0 && e.dokun(nodlar.get(y));
+    }
+
+    /** Vurguyu sıradaki afişe taşır; ekranda kalmadıysa bir kez kaydırıp yeniden bakar. */
+    private void gez(final EkranService e, final Kumanda.Tur yon, boolean kaydirabilir) {
+        List<AccessibilityNodeInfo> nodlar = new ArrayList<AccessibilityNodeInfo>();
+        List<Secim.Oge> ogeler = new ArrayList<Secim.Oge>();
+        e.secilebilirler(nodlar, ogeler);
+        List<Secim.Oge> liste = Secim.gezilecekler(ogeler, ekran().widthPixels, ekran().heightPixels);
+        int simdiki = -1;
+        for (int n = 0; vurguOge != null && n < liste.size(); n++) {
+            if (liste.get(n).ayni(vurguOge)) simdiki = n;
+        }
+        int y = Kumanda.tasi(liste, simdiki, yon);
+        if (y < 0) {
+            if (!kaydirabilir) {
+                kumandaBildir("Bu yönde başka afiş göremedim.");
+                return;
+            }
+            final boolean asagi = yon == Kumanda.Tur.ILERI || yon == Kumanda.Tur.ALT_SATIR;
+            final List<String> eski = new ArrayList<String>();
+            for (Secim.Oge o : liste) eski.add(o.ad);
+            vurguBirak();
+            e.kaydir(asagi);
+            kumandaBildir(asagi ? "↓ Kaydırıyorum" : "↑ Kaydırıyorum");
+            final int sira = komutSirasi;
+            ana.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (calisiyor && odak && sira == komutSirasi) kaydirmaSonrasi(e, asagi, eski);
+                }
+            }, 1300);
+            return;
+        }
+        vurgula(nodlar.get(ogeler.indexOf(liste.get(y))), liste.get(y), (y + 1) + "/" + liste.size());
+    }
+
+    /** Kaydırınca daha önce görünmeyen ilk (yukarı giderken son) afiş seçilir. */
+    private void kaydirmaSonrasi(EkranService e, boolean asagi, List<String> eski) {
+        List<AccessibilityNodeInfo> nodlar = new ArrayList<AccessibilityNodeInfo>();
+        List<Secim.Oge> ogeler = new ArrayList<Secim.Oge>();
+        e.secilebilirler(nodlar, ogeler);
+        List<Secim.Oge> liste = Secim.gezilecekler(ogeler, ekran().widthPixels, ekran().heightPixels);
+        if (liste.isEmpty()) {
+            kumandaBildir("Seçilecek afiş göremedim.");
+            return;
+        }
+        int y = asagi ? 0 : liste.size() - 1;
+        for (int n = 0; n < liste.size(); n++) {
+            int s = asagi ? n : liste.size() - 1 - n;
+            if (!liste.get(s).ad.isEmpty() && !eski.contains(liste.get(s).ad)) {
+                y = s;
+                break;
+            }
+        }
+        vurgula(nodlar.get(ogeler.indexOf(liste.get(y))), liste.get(y), (y + 1) + "/" + liste.size());
+    }
+
+    private void vurgula(AccessibilityNodeInfo n, Secim.Oge o, String sira) {
+        if (vurgu == null) vurgu = new Vurgu(this, pencereler);
+        vurguNod = n;
+        vurguOge = o;
+        vurgu.goster(new Rect(o.sol, o.ust, o.sag, o.alt));
+        ana.removeCallbacks(vurguSil);
+        ana.postDelayed(vurguSil, 30000);
+        String ad = Secim.kisaAd(o.ad);
+        kumandaBildir(sira + (ad.isEmpty() ? "" : "  " + ad) + "\nAçmak için: aç");
+    }
+
+    /** Ekran bu arada değiştiyse eski çerçeveye dokunulmaz. */
+    private void vurguluyuAc(EkranService e) {
+        AccessibilityNodeInfo n = vurguNod;
+        Secim.Oge o = vurguOge;
+        vurguBirak();
+        Rect r = new Rect();
+        if (n != null && n.refresh() && n.isVisibleToUser()) n.getBoundsInScreen(r);
+        if (o == null || !r.equals(new Rect(o.sol, o.ust, o.sag, o.alt)) || !e.dokun(n)) {
+            kumandaBildir("Ekran değişti. İlerle deyip yeniden seçin.");
+            return;
+        }
+        String ad = Secim.kisaAd(o.ad);
+        kumandaBildir(ad.isEmpty() ? "Açılıyor" : ad + " açılıyor");
+    }
+
+    private void dinlemeKipi(boolean arkada) {
+        Ayar.al(this).edit().putBoolean("surekli", arkada).apply();
+        if (!arkada) dinlemeyiBirak();
+        bildirim();
     }
 
     /** Adımlar sırayla, uygulamaların açılmasına zaman tanıyarak çalışır. */
@@ -940,6 +1342,13 @@ public class SahraService extends Service {
             case KAPAN:
                 stopSelf();
                 return;
+            case DINLEME: {
+                boolean arkada = k.metin.equals("ac");
+                dinlemeKipi(arkada);
+                cevap = arkada ? "Arkada dinliyorum " + Ayar.hitap(this) + ". Komuta " + Ayar.ad(this) + " diye başlayın."
+                        : "Arkada dinlemeyi kapattım " + Ayar.hitap(this) + ". Robota dokunarak konuşabilirsiniz.";
+                break;
+            }
             case BUYU:
             case KUCUL:
                 boyutla(Ayar.boyut(this) + (k.tur == Komut.Tur.BUYU ? 20 : -20));
@@ -1051,6 +1460,16 @@ public class SahraService extends Service {
                     serbestAnla(k);
                     return;
                 }
+                // Üst üste iki anlaşılmayan sözde yeniden dinlemeye geçilmez; ortam sesi döngü kurmasın
+                boolean ustUste = !anlasilmayan.isEmpty() && System.currentTimeMillis() - anlasilmayanZaman < 45000;
+                if (ustUste) anlasilmayan = "";
+                if (!ustUste && toplanan == null && Profil.ogrenmeAcik(this) && !k.cumle.isEmpty()) {
+                    anlasilmayan = k.cumle;
+                    anlasilmayanZaman = System.currentTimeMillis();
+                    komutBekle = true;
+                    soyle(Ayar.hitap(this) + ", bunu henüz bilmiyorum. Ne yapmamı istediğinizi şimdi söylerseniz öğrenebilirim.");
+                    return;
+                }
                 cevap = new Yurutucu(this).uygula(k);
                 break;
             case FORM_DOLDUR:
@@ -1059,6 +1478,7 @@ public class SahraService extends Service {
             case WEB_ARA:
                 Beyin.aramaYapildi(k.metin, System.currentTimeMillis());
                 cevap = new Yurutucu(this).uygula(k);
+                odakBaslat();
                 break;
             case YOUTUBE:
             case UYGULAMA_AC:
@@ -1066,6 +1486,8 @@ public class SahraService extends Service {
                 // Başka yere geçildi: yalnız "aç" artık eski aramayı kastetmez
                 Beyin.unut();
                 cevap = new Yurutucu(this).uygula(k);
+                if (k.tur == Komut.Tur.ANA_EKRAN) odakBitir();
+                else if (k.tur == Komut.Tur.YOUTUBE || Uygulamalar.bul(this, k.metin) != null) odakBaslat();
                 break;
             default:
                 cevap = new Yurutucu(this).uygula(k);
@@ -1663,7 +2085,9 @@ public class SahraService extends Service {
                 && k.tur != Komut.Tur.UYGULAMA_AC) return null;
         Secim.Istek i = Secim.coz(k.cumle);
         // "Afişin adı aç": o adda uygulama yoksa ekranda aranır
-        boolean uygulamaYok = i == null && k.tur == Komut.Tur.UYGULAMA_AC && Uygulamalar.bul(this, k.metin) == null;
+        // Kumanda modunda "X aç" önce ekrandakine bakar; "X uygulamasını aç" her zaman uygulama açar
+        boolean uygulamaYok = i == null && k.tur == Komut.Tur.UYGULAMA_AC
+                && (odak && !Komut.sade(k.cumle).contains("uygulama") || Uygulamalar.bul(this, k.metin) == null);
         if (i == null && !uygulamaYok) return null;
         String h = Ayar.hitap(this);
         EkranService e = EkranService.acik;
@@ -1678,6 +2102,7 @@ public class SahraService extends Service {
         e.secilebilirler(nodlar, ogeler);
         if (uygulamaYok) {
             int y = Secim.adla(ogeler, k.metin);
+            if (y >= 0 && odak && Uygulamalar.bul(this, k.metin) != null && !Secim.tamAd(ogeler.get(y).ad, k.metin)) y = -1;
             return y < 0 ? null : secileni(e, nodlar.get(y), ogeler.get(y).ad, "");
         }
         if (i.tip == Secim.Tip.ADLI) {
@@ -1712,6 +2137,7 @@ public class SahraService extends Service {
     private String secileni(EkranService e, AccessibilityNodeInfo n, String ad, String once) {
         Beyin.unut();
         if (!e.dokun(n)) return Ayar.hitap(this) + ", ona dokunamadım.";
+        odakBaslat();
         String kisa = Secim.kisaAd(ad);
         return "Tamam " + Ayar.hitap(this) + ". " + once + (kisa.isEmpty() ? "Açıyorum." : kisa + " açılıyor.");
     }
@@ -1906,6 +2332,7 @@ public class SahraService extends Service {
                 startActivity(i);
             }
             Bellek.sonSite(this, hatirlanacak);
+            odakBaslat();
             soyle(soz);
         } catch (RuntimeException e) {
             soyle(Ayar.hitap(this) + ", tarayıcıyı açamadım.");

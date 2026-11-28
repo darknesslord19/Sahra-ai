@@ -1,3 +1,5 @@
+import com.guven.sahra.Kumanda;
+import com.guven.sahra.Ogrenme;
 import com.guven.sahra.Secim;
 import com.guven.sahra.Komut;
 
@@ -201,6 +203,90 @@ public class KomutTest {
         yatay.add(new Secim.Oge("Hemen İzle", 0, 0, 300, 100, false));
         kos(Secim.oynatDugmesi(yatay) == 3, "oynat var");
         kos(Secim.kisaAd("Dağ Yolu Dağ Yolu").equals("Dağ Yolu") && Secim.kisaAd("Dağ Yolu").equals("Dağ Yolu"), "kısa ad");
+    }
+
+    static void kumandaBekle(String cumle, String beklenen) {
+        Kumanda.Istek i = Kumanda.coz(cumle);
+        String g = i == null ? "yok" : i.tur + (i.ad.isEmpty() ? "" : "|" + i.ad);
+        if (!g.equals(beklenen)) throw new AssertionError(cumle + " -> " + g + " (beklenen " + beklenen + ")");
+    }
+
+    static void kumandaTestleri() {
+        kumandaBekle("afiş ilerle", "ILERI");
+        kumandaBekle("Sahra ilerle", "ILERI");
+        kumandaBekle("önceki", "ONCEKI");
+        kumandaBekle("alta geç", "ALT_SATIR");
+        kumandaBekle("aç", "SEC");
+        kumandaBekle("geri", "GERI");
+        kumandaBekle("geri sar", "GERI_SAR");
+        kumandaBekle("ileri sar", "ILERI_SAR");
+        kumandaBekle("kaydır", "KAYDIR_ASAGI");
+        kumandaBekle("oynat", "OYNAT");
+        kumandaBekle("filmi durdur", "DURDUR");
+        kumandaBekle("sesi kıs", "SES_AZALT");
+        kumandaBekle("kategoriler", "KATEGORILER");
+        kumandaBekle("Korku kategorisini aç", "KATEGORI|Korku");
+        kumandaBekle("kumandayı kapat", "CIK");
+        kumandaBekle("ana ekrana dön", "ANA_EKRAN");
+        kumandaBekle("kumanda modu", "BASLAT");
+        kumandaBekle("WhatsApp aç", "yok");
+        kumandaBekle("sonraki şarkı", "yok");
+        kumandaBekle("bugün hava nasıl", "yok");
+        kos(Kumanda.adsizOlur(Kumanda.coz("ilerle")) && Kumanda.adsizOlur(Kumanda.coz("durdur")), "adsız olur");
+        kos(!Kumanda.adsizOlur(Kumanda.coz("tamam")) && !Kumanda.adsizOlur(Kumanda.coz("dur"))
+                && !Kumanda.adsizOlur(Kumanda.coz("kumanda modu")) && !Kumanda.adsizOlur(null), "adsız olmaz");
+
+        java.util.List<Secim.Oge> l = new java.util.ArrayList<Secim.Oge>();
+        for (int i = 0; i < 4; i++) {
+            int x = i % 2 == 0 ? 20 : 550, y = i < 2 ? 500 : 1300;
+            l.add(new Secim.Oge("f" + i, x, y, x + 500, y + 750, true));
+        }
+        kos(Kumanda.tasi(l, -1, Kumanda.Tur.ILERI) == 0 && Kumanda.tasi(l, 0, Kumanda.Tur.ILERI) == 1, "ileri");
+        kos(Kumanda.tasi(l, 3, Kumanda.Tur.ILERI) == -1 && Kumanda.tasi(l, 0, Kumanda.Tur.ONCEKI) == -1, "uçlar");
+        kos(Kumanda.tasi(l, 1, Kumanda.Tur.ALT_SATIR) == 3 && Kumanda.tasi(l, 2, Kumanda.Tur.UST_SATIR) == 0, "satır");
+        kos(Kumanda.tasi(l, 3, Kumanda.Tur.ALT_SATIR) == -1, "alt yok");
+        java.util.List<Secim.Oge> menu = new java.util.ArrayList<Secim.Oge>();
+        menu.add(new Secim.Oge("Korku Korku", 0, 400, 500, 480, false));
+        menu.add(new Secim.Oge("Komedi", 0, 300, 500, 380, false));
+        kos(Secim.gezilecekler(menu, 1080, 2200).get(0).ad.equals("Komedi"), "menüde gezinme");
+        kos(Secim.dugme(menu, "korku") == 0 && Secim.tamAd("Dağ Yolu Dağ Yolu", "dağ yolu") && !Secim.tamAd("Dağ Yolu 2", "dağ yolu"), "düğme adı");
+    }
+
+    static void ogretBekle(String cumle, String beklenen) {
+        Ogrenme.Istek i = Ogrenme.coz(cumle);
+        String g = i == null ? "yok" : i.tur + (i.tur == Ogrenme.Tur.OGRET ? "|" + i.soz + "|" + i.hedef : "");
+        if (!g.equals(beklenen)) throw new AssertionError(cumle + " -> " + g + " (beklenen " + beklenen + ")");
+    }
+
+    static void ogrenmeTestleri() {
+        ogretBekle("film zamanı deyince YouTube aç", "OGRET|film zamanı|YouTube aç");
+        ogretBekle("Sahra ben karanlık oldu dediğimde feneri aç", "OGRET|karanlık oldu|feneri aç");
+        ogretBekle("bunu öğren: uyku vakti dersem sesi kapat", "OGRET|uyku vakti|sesi kapat");
+        ogretBekle("tekrar yap", "TEKRAR");
+        ogretBekle("aynısını yap", "TEKRAR");
+        ogretBekle("neler öğrendin", "LISTE");
+        ogretBekle("son öğrendiğini unut", "SONUNCUYU_UNUT");
+        ogretBekle("öğrendiklerini unut", "HEPSINI_UNUT");
+        ogretBekle("mesaj yaz ben deyince gel", "yok");
+        ogretBekle("saat kaç", "yok");
+        kos(Ogrenme.hedefUygun("YouTube aç") && Ogrenme.hedefUygun("ilerle") && Ogrenme.hedefUygun("sesi kapat"), "uygun hedef");
+        kos(!Ogrenme.hedefUygun("gönder") && !Ogrenme.hedefUygun("mesaj yaz geliyorum") && !Ogrenme.hedefUygun("notları sil")
+                && !Ogrenme.hedefUygun("formu doldur") && !Ogrenme.hedefUygun("abrakadabra"), "yasak hedef");
+        kos(Ogrenme.sozUygun("film zamanı") && !Ogrenme.sozUygun("evet") && !Ogrenme.sozUygun("gönder") && !Ogrenme.sozUygun("a"), "söz");
+        java.util.Map<String, String> o = new java.util.LinkedHashMap<String, String>();
+        o.put(Ogrenme.anahtar("film zamanı geldi"), "YouTube aç");
+        kos(Ogrenme.bul(o, "Film zamanı geldi") != null && Ogrenme.bul(o, "film zamani geldim") != null, "öğrenilen");
+        kos(Ogrenme.bul(o, "film zamanı bitti") == null && Ogrenme.bul(o, "film zamanı") == null, "yanlış eşleşme");
+        java.util.Map<String, Integer> g = new java.util.HashMap<String, Integer>();
+        g.put(Ogrenme.anahtar("netflix aç"), 4);
+        kos(Ogrenme.sec(java.util.Arrays.asList("netfiks aş", "netflix aç"), o, g).equals("netflix aç"), "geçmişle karar");
+        kos(Ogrenme.sec(java.util.Arrays.asList("saat kaç", "netflix aç"), o, g).equals("saat kaç"), "anlaşılan korunur");
+        kos(Ogrenme.sec(java.util.Arrays.asList("fil zamanı", "film zamanı geldi"), o, g).equals("film zamanı geldi"), "öğrenilen seçilir");
+        kos(!Ogrenme.gecmiseUygun(Komut.Tur.YAZ) && !Ogrenme.gecmiseUygun(Komut.Tur.ARA) && !Ogrenme.gecmiseUygun(Komut.Tur.NOT_AL)
+                && !Ogrenme.gecmiseUygun(Komut.Tur.YAPAY_SORU), "geçmişe yazılmaz");
+        kos(Komut.coz("arkada dinle").metin.equals("ac") && Komut.coz("Sahra arka planda dinlemeyi aç").tur == Komut.Tur.DINLEME, "arkada dinle");
+        kos(Komut.coz("dokununca dinle").metin.equals("kapat") && Komut.coz("arkada dinlemeyi kapat").metin.equals("kapat")
+                && Komut.coz("sürekli dinlemeyi kapat").metin.equals("kapat"), "dokununca dinle");
     }
 
     public static void main(String[] a) {
@@ -520,6 +606,8 @@ public class KomutTest {
         jestTestleri();
         sahra1Testleri();
         secimTestleri();
+        kumandaTestleri();
+        ogrenmeTestleri();
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

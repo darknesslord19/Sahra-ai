@@ -13,7 +13,7 @@ public final class Komut {
         GERI, ANA_EKRAN, SON_UYGULAMALAR, BILDIRIMLER, ASAGI, YUKARI,
         BUYU, KUCUL, RENK, SES_DEGISTIR, BILGI, SORU, GOOGLE_SORU, PENCERE_KAPAT, DAVRANIS, OKUMA_DUR, HAVA, KUR, EFEKT, GUZEL_SOZ, YAPAY_SORU, KAPAN,
         ALARM, ZAMANLAYICI, HATIRLAT, ARA, FENER, KAMERA, PARLAKLIK, YOL_TARIFI, AYAR_AC,
-        OZET, BILDIRIM_OKU, NOT_AL, NOT_OKU, NOT_SIL, CEVIR, ARABA, HAFIZA_SIL, FORM_DOLDUR, BILINMIYOR
+        OZET, BILDIRIM_OKU, NOT_AL, NOT_OKU, NOT_SIL, CEVIR, ARABA, HAFIZA_SIL, FORM_DOLDUR, DINLEME, BILINMIYOR
     }
 
     public final Tur tur;
@@ -81,6 +81,14 @@ public final class Komut {
             if (s.isEmpty()) return k(Tur.SELAM);
         }
         Matcher m;
+
+        // Dinleme biçimi: arkada sürekli ya da yalnızca robota dokununca
+        if (s.matches("(?:arkada|arka planda|arkaplanda) dinle(?:meyi)?(?: ac| baslat)?|surekli dinle(?:meyi)?(?: ac| baslat)?|dinlemede kal")) {
+            return new Komut(Tur.DINLEME, "ac");
+        }
+        if (s.matches("(?:(?:arkada|arka planda|arkaplanda|surekli) dinleme(?:yi)? (?:kapat|durdur|birak))|(?:arkada|arka planda|surekli) dinleme|dokununca dinle|dokunarak dinle|dokundugumda dinle|dinlemeyi (?:kapat|birak)")) {
+            return new Komut(Tur.DINLEME, "kapat");
+        }
 
         // Açıkça yapay zekâya sorulanlar: "sor ...", "Gemini ..."
         m = Pattern.compile("^(?:geminiye sor|gemini ye sor|yapay zekaya sor|gemini|sor)[ :,]+(.+)$").matcher(s);

@@ -6,6 +6,28 @@ Telefonda yüzen, Türkçe sesli ve yazılı komut alan robot asistan.
 
 Sahra son aramayı, çıkan sonuçları ve girdiği siteyi 10 dakika aklında tutar: "Chrome'da Trendyol ara" → "aç gir" → "sonraki siteye gir" → "ikinci siteye gir". "X sitesine gir" arayıp doğrudan girer; "trendyol nokta com'a gir" adresi açar. Adı alan adıyla birebir eşleşen siteler öğrenilir ve sonraki sefer aramadan açılır ("yanlış site" derseniz silinir; **Yetenekler → Beyin ve bellek** bölümünden kapatılıp temizlenebilir). Sonuca girmek için ekran kontrolü gerekir ve Chrome üzerinde çalışır. Bağlantılar telefonda işlenir; yapay zekâya ya da yedeğe gönderilmez.
 
+## Arkada dinleme
+
+Ana ekrandaki **Dokununca dinle / Arkada dinle** seçimi, bildirimdeki düğme ya da "arkada dinle" / "dokununca dinle" sözleri.
+
+## Kumanda (odak) modu
+
+Sahra bir uygulama, site ya da afiş açınca (veya "kumanda modu" deyince) kısa komutlar o ekrana uygulanır:
+"afiş ilerle", "önceki", "alta geç", "aç", "geri", "kaydır", "oynat", "durdur", "sesi aç/kıs", "ileri sar", "tam ekran",
+"kategoriler", "... kategorisini aç". Seçili afişin çevresine yeşil çerçeve çizilir. "Kumandayı kapat" ya da "ana ekrana dön" ile biter.
+"Arkada dinle" açıkken bu sözlerin çoğu ad söylenmeden alınır (kapatılabilir). Film sesi komut sanılabilir; ileri sarma ve
+tam ekran her oynatıcıda çalışmaz.
+
+## Hafıza ve profil
+
+- "film zamanı deyince YouTube aç": onay sorar, "evet" derseniz öğrenir
+- Bilinmeyen bir sözün ardından doğru komutu söylerseniz ikisini bağlamayı teklif eder
+- "neler öğrendin", "son öğrendiğini unut", "öğrendiklerini unut", "tekrar yap"
+- Komut geçmişi, ses tanıma ilk seçeneği anlaşılmadığında karar vermek için kullanılır
+
+Kurallara dayanır, yapay zekâ modeli değildir. Mesaj gönderme, yazma, form doldurma ve silme komutları bir söze bağlanamaz.
+Öğrenilenler ve geçmiş yalnızca telefonda durur; JSON yedeğine ve yapay zekâya gitmez.
+
 ## Ekrandan film ve video seçme
 
 Başka bir uygulama ya da site açıkken (ekran kontrolü izni gerekir):

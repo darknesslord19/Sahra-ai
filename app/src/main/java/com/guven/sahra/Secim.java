@@ -54,6 +54,10 @@ public final class Secim {
 
         int boy() { return alt - ust; }
 
+        boolean ayni(Oge o) {
+            return sol == o.sol && ust == o.ust && sag == o.sag && alt == o.alt && ad.equals(o.ad);
+        }
+
         boolean kapsar(Oge o) {
             return sol <= o.sol && ust <= o.ust && sag >= o.sag && alt >= o.alt;
         }
@@ -218,6 +222,30 @@ public final class Secim {
             sonuc.addAll(satir);
         }
         return sonuc;
+    }
+
+    /** Kumanda modunda gezilecek öğeler: afişler; hiç yoksa (menü, kategori listesi) adı olan dokunulabilir öğeler. */
+    public static List<Oge> gezilecekler(List<Oge> hepsi, int ekranEn, int ekranBoy) {
+        List<Oge> l = kartlar(hepsi, ekranEn, ekranBoy);
+        if (!l.isEmpty()) return l;
+        List<Oge> adli = new ArrayList<Oge>();
+        for (Oge o : hepsi) {
+            if (!o.ad.isEmpty() && buyuklukUygun(o, ekranEn, ekranBoy) && !YASAK.matcher(duz(o.ad)).find()) adli.add(o);
+        }
+        return sirala(adli);
+    }
+
+    /** Adı (bütünüyle) desene uyan ilk öğe; bağlantı ve görselin yinelenen adı da sayılır. Yoksa -1. */
+    public static int dugme(List<Oge> l, String desen) {
+        for (int i = 0; i < l.size(); i++) {
+            if (duz(kisaAd(l.get(i).ad)).matches(desen)) return i;
+        }
+        return -1;
+    }
+
+    /** Öğenin adı söylenenle birebir aynı mı? */
+    public static boolean tamAd(String oge, String soylenen) {
+        return duz(kisaAd(oge)).equals(duz(soylenen));
     }
 
     /** sira için listedeki yer; liste o kadar uzun değilse -1. zar: 0 ile 1 arası rastgele sayı. */

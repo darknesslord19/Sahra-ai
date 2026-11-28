@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Context;
 import android.content.Intent;
+import java.util.Map;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
@@ -196,6 +197,12 @@ public class MainActivity extends Activity {
         l.add(new Bolum("Anlama ve ses", "Doğal çevrimiçi ses", durumu("sesNet", false), R.drawable.ik_mikrofon, new Runnable() {
             @Override public void run() { netSesKarti(); }
         }));
+        l.add(new Bolum("Yetenekler", "Hafıza ve profil", Profil.hepsi(this).size() + " öğretilen söz", R.drawable.ik_yildiz, new Runnable() {
+            @Override public void run() { profilKarti(); }
+        }));
+        l.add(new Bolum("Yetenekler", "Kumanda (odak) modu", durumu("odakOtomatik", true), R.drawable.ik_klavye, new Runnable() {
+            @Override public void run() { kumandaKarti(); }
+        }));
         l.add(new Bolum("Yetenekler", "Beyin ve bellek", durumu("beyinOgren", true), R.drawable.ik_anlama, new Runnable() {
             @Override public void run() { beyinKarti(); }
         }));
@@ -286,6 +293,7 @@ public class MainActivity extends Activity {
 
         baslikKarti();
         anaDugme(hazir());
+        dinlemeSecimi();
 
         String grup = "";
         LinearLayout kutusu = null;
@@ -791,6 +799,84 @@ public class MainActivity extends Activity {
         ekle(kok, d, 14, 54);
     }
 
+    /** Ana ekranda her zaman görünen dinleme biçimi seçimi. */
+    private void dinlemeSecimi() {
+        final boolean arkada = Ayar.al(this).getBoolean("surekli", false);
+        LinearLayout satir = new LinearLayout(this);
+        String[] adlar = {"Dokununca dinle", "Arkada dinle"};
+        for (int i = 0; i < 2; i++) {
+            final boolean bu = i == 1;
+            TextView d = dugme(adlar[i], arkada == bu, new Runnable() {
+                @Override
+                public void run() {
+                    Ayar.al(MainActivity.this).edit().putBoolean("surekli", bu).apply();
+                    yenile();
+                    ciz();
+                }
+            });
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(44), 1f);
+            if (i > 0) p.leftMargin = dp(8);
+            satir.addView(d, p);
+        }
+        ekle(kok, satir, 10, -2);
+        ekle(kok, metin(arkada ? "Komuta \"" + Ayar.ad(this) + "\" diye başlayın. Mikrofon açık kalır, pil daha çok harcanır."
+                : "Yalnızca robota dokununca dinler.", 12, SOLUK), 4, -2);
+    }
+
+    private void kumandaKarti() {
+        aciklama("Sahra bir uygulama ya da site açınca, siz bitirene kadar kısa komutları o ekrana uygular. "
+                + "\"Afiş ilerle\" dediğinizde seçili afişin çevresine yeşil çerçeve çizer. Ekran kontrolü açık olmalı.");
+        dikkat(EkranService.acik != null ? "Ekran kontrolü açık." : "Ekran kontrolü kapalı: ana ekrandaki Kurulum bölümünden açın.");
+        soyleyin("Kumanda modu", "Afiş ilerle", "İlerle", "Önceki", "Alta geç", "Aç", "Geri", "Kaydır", "Oynat", "Durdur",
+                "Sesi aç", "Sesi kıs", "İleri sar", "Tam ekran", "Kategoriler", "Korku kategorisini aç", "Kumandayı kapat", "Ana ekrana dön");
+        anahtar("Açınca kendiliğinden odaklan", "Uygulama, site ya da afiş açınca kumanda modu başlar.", "odakOtomatik", true);
+        anahtar("Kumanda sözlerinde adımı arama", "Arkada dinle açıkken, kumanda modunda \"ilerle\", \"durdur\" gibi sözleri "
+                + "ad söylemeden alır. Filmdeki konuşma komut sanılırsa kapatın. Bazı telefonlarda dinleme videonun sesini kısabilir "
+                + "ya da bip sesi çıkarır. \"Adımı telefonda tanı\" açıksa yine adım gerekir.", "odakAdsiz", true);
+    }
+
+    private void profilKarti() {
+        aciklama("Sahra yalnızca sizin onayladığınız sözleri öğrenir. Bilmediği bir söz söyleyip ardından doğrusunu söylerseniz "
+                + "\"bundan sonra böyle yapayım mı\" diye sorar. Bunlar yalnızca telefonda durur; yedeğe ve yapay zekâya gitmez.");
+        dikkat("Hitap: " + Ayar.hitap(this) + " · Asistan: " + Ayar.ad(this));
+        soyleyin("Film zamanı deyince YouTube aç", "Neler öğrendin", "Son öğrendiğini unut", "Tekrar yap");
+        anahtar("Onaylı öğrenme", "", "ogrenme", true);
+        anahtar("Komut geçmişi", "Sık kullanılan komutları sayar; ses tanıma emin olamazsa bunlara bakarak karar verir. "
+                + "Mesaj, not, soru, arama ve kişi içeren komutlar yazılmaz.", "gecmisAcik", true);
+        Map<String, String> ogrenilen = Profil.hepsi(this);
+        ekle(kart, metin(ogrenilen.isEmpty() ? "Henüz öğretilmiş söz yok."
+                : "Öğrettikleriniz (silmek için dokunun)", 13, SOLUK), 14, -2);
+        for (final Map.Entry<String, String> g : ogrenilen.entrySet()) {
+            TextView satir = dugme(g.getKey() + "  →  " + g.getValue(), false, new Runnable() {
+                @Override
+                public void run() {
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setMessage("\"" + g.getKey() + "\" unutulsun mu?")
+                            .setPositiveButton("Unut", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface d, int i) {
+                                    Profil.unut(MainActivity.this, g.getKey());
+                                    ciz();
+                                }
+                            })
+                            .setNegativeButton("Vazgeç", null)
+                            .show();
+                }
+            });
+            satir.setPadding(dp(10), dp(10), dp(10), dp(10));
+            ekle(kart, satir, 6, -2);
+        }
+        List<String> sik = Profil.sikKullanilan(this, 8);
+        ekle(kart, metin(sik.isEmpty() ? "Henüz komut geçmişi yok." : "Sık kullandıklarınız\n" + TextUtils.join("\n", sik), 13, SOLUK), 14, -2);
+        ekle(kart, dugme("Geçmişi sil", false, new Runnable() {
+            @Override
+            public void run() {
+                Profil.gecmisiSil(MainActivity.this);
+                ciz();
+            }
+        }), 10, 44);
+    }
+
     private void komutKarti(final boolean hazir) {
         LinearLayout satir = new LinearLayout(this);
         final EditText e = kutu("YouTube'dan film aç", yazilanKomut);
@@ -817,7 +903,7 @@ public class MainActivity extends Activity {
         satir.addView(g, l);
         ekle(kart, satir, 10, -2);
 
-        anahtar("Sürekli dinleme", "Yalnızca \"" + Ayar.ad(this) + "\" ile başlayan cümleye tepki verir. Sadece \"" + Ayar.ad(this) + "\" derseniz komutunuzu bekler. Adınızı ayırt etmek için mikrofon açık kalır ve duyulan ses telefonun tanıma hizmetine gidebilir. Pili daha çok harcar, bazı telefonlarda bip sesi çıkar.",
+        anahtar("Arkada dinle (sürekli dinleme)", "Yalnızca \"" + Ayar.ad(this) + "\" ile başlayan cümleye tepki verir. Sadece \"" + Ayar.ad(this) + "\" derseniz komutunuzu bekler. Adınızı ayırt etmek için mikrofon açık kalır ve duyulan ses telefonun tanıma hizmetine gidebilir. Pili daha çok harcar, bazı telefonlarda bip sesi çıkar.",
                 "surekli", false);
     }
 
