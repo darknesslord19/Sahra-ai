@@ -167,6 +167,10 @@ final class Yurutucu {
         return true;
     }
 
+    void oynatTusu() {
+        tus(KeyEvent.KEYCODE_MEDIA_PLAY);
+    }
+
     private void tus(int kod) {
         ses.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, kod));
         ses.dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, kod));

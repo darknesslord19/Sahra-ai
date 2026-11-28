@@ -1,3 +1,4 @@
+import com.guven.sahra.Secim;
 import com.guven.sahra.Komut;
 
 public class KomutTest {
@@ -132,6 +133,74 @@ public class KomutTest {
             denetle("iki sayfada " + islev, sayfa.contains("window." + islev + "=function") && eski.contains("function " + islev + "("));
         }
         denetle("sahra1 yalniz orijinal", !sayfa.contains("id:'fener'") && !sayfa.contains("id:'kristal'"));
+    }
+
+    static void secimBekle(String cumle, String beklenen) {
+        Secim.Istek i = Secim.coz(cumle);
+        String g = i == null ? "yok" : i.tip + "|" + i.sira + "|" + i.ad + "|" + (i.burada ? "burada" : "");
+        if (!g.equals(beklenen)) throw new AssertionError(cumle + " -> " + g + " (beklenen " + beklenen + ")");
+    }
+
+    static void kos(boolean dogru, String ne) {
+        if (!dogru) throw new AssertionError(ne);
+    }
+
+    static void secimTestleri() {
+        secimBekle("ordaki bir filmi oynat", "SIRA|0||burada");
+        secimBekle("Sahra oradaki bir filmi oynat", "SIRA|0||burada");
+        secimBekle("bir filmi oynat", "SIRA|0||");
+        secimBekle("buradan bir film aç", "SIRA|0||burada");
+        secimBekle("film aç", "SIRA|0||");
+        secimBekle("ilk filmi aç", "SIRA|1||");
+        secimBekle("ikinci filmi oynat", "SIRA|2||");
+        secimBekle("3. afişe tıkla", "SIRA|3||");
+        secimBekle("sondaki filmi aç", "SIRA|-1||");
+        secimBekle("rastgele bir film aç", "SIRA|-2||");
+        secimBekle("ekrandaki ikinciyi seç", "SIRA|2||burada");
+        secimBekle("filmlerden birini aç", "yok");
+        secimBekle("oynat", "OYNAT|0||");
+        secimBekle("filmi oynat", "OYNAT|0||");
+        secimBekle("videoyu aç", "OYNAT|0||");
+        secimBekle("Mavi Deniz filmini aç", "ADLI|0|Mavi Deniz|");
+        secimBekle("ordaki Mavi Deniz filmini oynat", "ADLI|0|Mavi Deniz|burada");
+        secimBekle("7. Koğuştaki Mucize filmi aç", "ADLI|0|7. Koğuştaki Mucize|");
+        secimBekle("Son Yolculuk izle", "ADLI|0|Son Yolculuk|");
+        secimBekle("YouTube'da bir film aç", "yok");
+        secimBekle("youtube da Mavi Deniz filmi aç", "yok");
+        secimBekle("müzik aç", "yok");
+        secimBekle("WhatsApp aç", "yok");
+        secimBekle("aç", "yok");
+        secimBekle("sesi aç", "yok");
+        secimBekle("mesaj yaz bir film aç", "yok");
+
+        java.util.List<Secim.Oge> l = new java.util.ArrayList<Secim.Oge>();
+        l.add(new Secim.Oge("sayfa", 0, 0, 1080, 2200, true));
+        l.add(new Secim.Oge("Menü", 10, 100, 110, 200, true));
+        l.add(new Secim.Oge("Reklam şeridi", 0, 220, 1080, 370, true));
+        l.add(new Secim.Oge("satır kutusu", 0, 700, 1080, 1220, true));
+        l.add(new Secim.Oge("Kapak duyurusu", 0, 390, 1080, 680, true));
+        l.add(new Secim.Oge("Dağ Yolu", 400, 712, 760, 1200, true));
+        l.add(new Secim.Oge("Mavi Deniz 2020", 20, 700, 380, 1200, true));
+        l.add(new Secim.Oge("Reklam Büyük Fırsat", 20, 1230, 380, 1700, true));
+        l.add(new Secim.Oge("Satın al", 400, 1230, 760, 1700, true));
+        l.add(new Secim.Oge("", 20, 1720, 380, 2150, true));
+        java.util.List<Secim.Oge> k = Secim.kartlar(l, 1080, 2200);
+        kos(k.size() == 3, "kart sayısı " + k.size());
+        kos(k.get(0).ad.startsWith("Mavi") && k.get(1).ad.equals("Dağ Yolu") && k.get(2).ad.isEmpty(), "kart sırası");
+        kos(Secim.yer(Secim.HERHANGI, 3, 0.9) == 0 && Secim.yer(2, 3, 0) == 1 && Secim.yer(4, 3, 0) == -1, "yer");
+        kos(Secim.yer(Secim.SONUNCU, 3, 0) == 2 && Secim.yer(Secim.RASTGELE, 3, 0.99) == 2 && Secim.yer(1, 0, 0) == -1, "yer son");
+        kos(l.get(Secim.adla(l, "Mavi Deniz")).ad.startsWith("Mavi"), "adla");
+        kos(l.get(Secim.adla(l, "dag yolu")).ad.equals("Dağ Yolu"), "adla sade");
+        kos(Secim.adla(l, "Kara Orman") == -1 && Secim.adla(l, "satın al") == -1, "adla yok");
+        java.util.List<Secim.Oge> yatay = new java.util.ArrayList<Secim.Oge>();
+        yatay.add(new Secim.Oge("Birinci video", 0, 200, 1080, 810, false));
+        yatay.add(new Secim.Oge("İkinci video", 0, 820, 1080, 1430, false));
+        kos(Secim.kartlar(yatay, 1080, 2200).size() == 2, "görselsiz satırlar");
+        yatay.add(new Secim.Oge("Duraklat", 0, 0, 100, 100, false));
+        kos(Secim.oynatDugmesi(yatay) == -1, "oynat yok");
+        yatay.add(new Secim.Oge("Hemen İzle", 0, 0, 300, 100, false));
+        kos(Secim.oynatDugmesi(yatay) == 3, "oynat var");
+        kos(Secim.kisaAd("Dağ Yolu Dağ Yolu").equals("Dağ Yolu") && Secim.kisaAd("Dağ Yolu").equals("Dağ Yolu"), "kısa ad");
     }
 
     public static void main(String[] a) {
@@ -450,6 +519,7 @@ public class KomutTest {
         isimTestleri();
         jestTestleri();
         sahra1Testleri();
+        secimTestleri();
         System.out.println(hata == 0 ? "Tüm komut testleri geçti" : hata + " hata");
         if (hata > 0) System.exit(1);
     }

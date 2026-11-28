@@ -4,11 +4,13 @@ import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
 import android.content.Intent;
 import android.graphics.Path;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -89,6 +91,65 @@ public class EkranService extends AccessibilityService {
             }
         }
         return false;
+    }
+
+    /** Öndeki uygulamanın penceresi. O an Sahra'nın yüzen penceresi etkinse arkadaki uygulama aranır. */
+    private AccessibilityNodeInfo hedefKok() {
+        AccessibilityNodeInfo kok = getRootInActiveWindow();
+        if (kok != null && !getPackageName().contentEquals(String.valueOf(kok.getPackageName()))) return kok;
+        for (AccessibilityWindowInfo w : getWindows()) {
+            if (w.getType() != AccessibilityWindowInfo.TYPE_APPLICATION) continue;
+            AccessibilityNodeInfo k = w.getRoot();
+            if (k != null) return k;
+        }
+        return kok;
+    }
+
+    /** Seçim yapılacak uygulamanın paket adı; bilinmiyorsa boş. */
+    String hedefPaket() {
+        AccessibilityNodeInfo kok = hedefKok();
+        return kok == null || kok.getPackageName() == null ? "" : kok.getPackageName().toString();
+    }
+
+    /** Ekranda görünen dokunulabilir öğeler. nodlar ve ogeler aynı sıradadır. */
+    void secilebilirler(List<AccessibilityNodeInfo> nodlar, List<Secim.Oge> ogeler) {
+        secimTopla(hedefKok(), nodlar, ogeler, 0, new int[]{0});
+    }
+
+    private void secimTopla(AccessibilityNodeInfo n, List<AccessibilityNodeInfo> nodlar, List<Secim.Oge> ogeler,
+                            int derinlik, int[] sayac) {
+        // Web sayfalarının ağacı derindir
+        if (n == null || derinlik > 90 || sayac[0]++ > 4000) return;
+        if (n.isVisibleToUser() && n.isClickable() && !n.isEditable() && !n.isPassword()) {
+            StringBuilder ad = new StringBuilder(etiket(n));
+            altYazi(n, ad, 0);
+            Rect r = new Rect();
+            n.getBoundsInScreen(r);
+            nodlar.add(n);
+            ogeler.add(new Secim.Oge(ad.toString().trim(), r.left, r.top, r.right, r.bottom, gorselVar(n, 0)));
+        }
+        for (int i = 0; i < n.getChildCount(); i++) secimTopla(n.getChild(i), nodlar, ogeler, derinlik + 1, sayac);
+    }
+
+    private static boolean gorselVar(AccessibilityNodeInfo n, int derinlik) {
+        if (String.valueOf(n.getClassName()).endsWith("Image") || String.valueOf(n.getClassName()).endsWith("ImageView")) return true;
+        for (int i = 0; i < n.getChildCount() && derinlik < 5; i++) {
+            AccessibilityNodeInfo a = n.getChild(i);
+            if (a != null && gorselVar(a, derinlik + 1)) return true;
+        }
+        return false;
+    }
+
+    /** Öğeye dokunur; öğe tıklamayı kabul etmezse ortasına parmak dokunuşu yapar. */
+    boolean dokun(AccessibilityNodeInfo n) {
+        if (n.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true;
+        Rect r = new Rect();
+        n.getBoundsInScreen(r);
+        if (r.isEmpty() || r.centerX() < 0 || r.centerY() < 0) return false;
+        Path yol = new Path();
+        yol.moveTo(r.centerX(), r.centerY());
+        return dispatchGesture(new GestureDescription.Builder()
+                .addStroke(new GestureDescription.StrokeDescription(yol, 0, 60)).build(), null, null);
     }
 
     /** Öndeki sayfadaki bağlantılar, sayfa sırasıyla: {adres, görünen ad}. Adresi Chrome verir. */

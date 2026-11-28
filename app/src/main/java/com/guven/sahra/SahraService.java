@@ -929,6 +929,12 @@ public class SahraService extends Service {
 
     /** toplanan null değilse cevap hemen söylenmez, listeye eklenir. */
     private void tekKomut(Komut k, List<String> toplanan) {
+        String secimCevabi = ekrandanSec(k);
+        if (secimCevabi != null) {
+            if (toplanan == null) soyle(secimCevabi);
+            else toplanan.add(secimCevabi);
+            return;
+        }
         String cevap = "Tamam " + Ayar.hitap(this) + ".";
         switch (k.tur) {
             case KAPAN:
@@ -1648,11 +1654,83 @@ public class SahraService extends Service {
 
     // ---------- Beyin: bağlam belleği ----------
 
+    /**
+     * Başka bir uygulama ya da site açıkken "ikinci filmi aç", "oynat" gibi sözleri ekrandakilere uygular.
+     * Ekranla ilgili değilse null döner ve komut her zamanki gibi çalışır.
+     */
+    private String ekrandanSec(Komut k) {
+        if (k.tur != Komut.Tur.YOUTUBE && k.tur != Komut.Tur.BILINMIYOR && k.tur != Komut.Tur.TIKLA
+                && k.tur != Komut.Tur.UYGULAMA_AC) return null;
+        Secim.Istek i = Secim.coz(k.cumle);
+        // "Afişin adı aç": o adda uygulama yoksa ekranda aranır
+        boolean uygulamaYok = i == null && k.tur == Komut.Tur.UYGULAMA_AC && Uygulamalar.bul(this, k.metin) == null;
+        if (i == null && !uygulamaYok) return null;
+        String h = Ayar.hitap(this);
+        EkranService e = EkranService.acik;
+        if (e == null) {
+            return i != null && i.burada ? h + ", bunun için Sahra uygulamasından ekran kontrolü iznini açmalısınız." : null;
+        }
+        if (!baskaUygulamaOnde(e.hedefPaket())) {
+            return i != null && i.burada ? h + ", ekranda seçim yapabileceğim açık bir uygulama ya da site göremiyorum." : null;
+        }
+        List<AccessibilityNodeInfo> nodlar = new ArrayList<AccessibilityNodeInfo>();
+        List<Secim.Oge> ogeler = new ArrayList<Secim.Oge>();
+        e.secilebilirler(nodlar, ogeler);
+        if (uygulamaYok) {
+            int y = Secim.adla(ogeler, k.metin);
+            return y < 0 ? null : secileni(e, nodlar.get(y), ogeler.get(y).ad, "");
+        }
+        if (i.tip == Secim.Tip.ADLI) {
+            int y = Secim.adla(ogeler, i.ad);
+            if (y >= 0) return secileni(e, nodlar.get(y), ogeler.get(y).ad, "");
+            return h + ", ekranda " + i.ad + " adını göremedim. Aşağı kaydır diyebilir ya da ilk filmi aç diyebilirsiniz. "
+                    + "YouTube için başına YouTube'da ekleyin.";
+        }
+        int oynat = Secim.oynatDugmesi(ogeler);
+        if (i.tip == Secim.Tip.OYNAT) {
+            if (oynat >= 0 && e.dokun(nodlar.get(oynat))) return "Oynatıyorum " + h + ".";
+            new Yurutucu(this).oynatTusu();
+            return h + ", ekranda oynat düğmesi göremedim, oynat tuşu gönderdim. "
+                    + "Başlamadıysa videoya dokunun. Afiş seçmek için ilk filmi aç deyin.";
+        }
+        List<Secim.Oge> kartlar = Secim.kartlar(ogeler, getResources().getDisplayMetrics().widthPixels,
+                getResources().getDisplayMetrics().heightPixels);
+        int y = Secim.yer(i.sira, kartlar.size(), Math.random());
+        if (y < 0) {
+            if (!kartlar.isEmpty()) {
+                return h + ", ekranda " + kartlar.size() + " afiş görüyorum. Daha fazlası için aşağı kaydır deyin.";
+            }
+            // Film sayfasının içindeyken "bir filmi oynat": afiş yok, oynat düğmesi var
+            if (i.sira == Secim.HERHANGI && oynat >= 0 && e.dokun(nodlar.get(oynat))) return "Oynatıyorum " + h + ".";
+            return h + ", ekranda seçebileceğim bir afiş göremedim. Biraz kaydırıp tekrar söyleyin.";
+        }
+        Secim.Oge kart = kartlar.get(y);
+        return secileni(e, nodlar.get(ogeler.indexOf(kart)), kart.ad,
+                (y + 1) + ". afiş, ekrandaki " + kartlar.size() + " taneden. ");
+    }
+
+    private String secileni(EkranService e, AccessibilityNodeInfo n, String ad, String once) {
+        Beyin.unut();
+        if (!e.dokun(n)) return Ayar.hitap(this) + ", ona dokunamadım.";
+        String kisa = Secim.kisaAd(ad);
+        return "Tamam " + Ayar.hitap(this) + ". " + once + (kisa.isEmpty() ? "Açıyorum." : kisa + " açılıyor.");
+    }
+
+    /** Öndeki, Sahra ya da telefonun ana ekranı dışında bir uygulama mı? */
+    private boolean baskaUygulamaOnde(String paket) {
+        if (paket.isEmpty() || paket.equals(getPackageName()) || paket.equals("com.android.systemui")) return false;
+        ResolveInfo ev = getPackageManager().resolveActivity(
+                new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0);
+        return ev == null || ev.activityInfo == null || !paket.equals(ev.activityInfo.packageName);
+    }
+
     /** Devam ya da site cümlesiyse işler ve true döner. */
     private boolean beyinIsle(String cumle) {
         long simdi = System.currentTimeMillis();
         Beyin.Istek i = Beyin.coz(cumle, !Beyin.sonArama(simdi).isEmpty());
         if (i == null) return false;
+        // Ortada bir web araması yoksa "ikinciye gir" ekrandaki ikinci afişi kasteder
+        if (i.tip == Beyin.Tip.GIR && Beyin.sonArama(simdi).isEmpty() && Secim.coz(cumle) != null) return false;
         String h = Ayar.hitap(this);
         switch (i.tip) {
             case ADRES:
