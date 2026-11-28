@@ -1104,9 +1104,9 @@ public class SahraService extends Service {
         EkranService e = EkranService.acik;
         boolean gezinme = i.tur == Kumanda.Tur.ILERI || i.tur == Kumanda.Tur.ONCEKI
                 || i.tur == Kumanda.Tur.ALT_SATIR || i.tur == Kumanda.Tur.UST_SATIR;
-        // "afiş ilerle" ya da "kumanda modu" demek modu kendiliğinden açar
+        // İçinde "afiş" geçen gezinme sözü ya da "kumanda modu" demek modu kendiliğinden açar
         boolean acar = i.tur == Kumanda.Tur.BASLAT || i.tur == Kumanda.Tur.KATEGORI || i.tur == Kumanda.Tur.KATEGORILER
-                || gezinme && i.soz.matches(".*(?:afis|ilerle).*");
+                || gezinme && i.soz.contains("afis");
         if (!odak && !acar) return false;
         if (e == null) {
             if (i.tur != Kumanda.Tur.BASLAT) return false;

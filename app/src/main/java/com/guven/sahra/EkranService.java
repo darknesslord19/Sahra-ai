@@ -120,7 +120,9 @@ public class EkranService extends AccessibilityService {
                             int derinlik, int[] sayac) {
         // Web sayfalarının ağacı derindir
         if (n == null || derinlik > 90 || sayac[0]++ > 4000) return;
-        if (n.isVisibleToUser() && n.isClickable() && !n.isEditable() && !n.isPassword()) {
+        // Tarayıcının kendi araç çubuğu seçime katılmaz
+        if (n.isVisibleToUser() && n.isClickable() && !n.isEditable() && !n.isPassword()
+                && !String.valueOf(n.getViewIdResourceName()).startsWith("com.android.chrome:id/")) {
             StringBuilder ad = new StringBuilder(etiket(n));
             altYazi(n, ad, 0);
             Rect r = new Rect();
